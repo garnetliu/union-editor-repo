@@ -8,7 +8,7 @@
       <editor
             name="MyEditor"
             icon="icons/sample.gif"
-            extensions="myfile"
+            extensions="union"
             contributorClass="org.eclipse.ui.editors.text.TextEditorActionContributor"
             class="edu.slc.jsumplugin.editors.UnionEditor"
             id="org.eclipse.ui.editors.text.texteditor">
@@ -45,7 +45,7 @@
    <objectContribution 
       id="org.eclipse.ui.articles.action.contribution.popup.object"
       objectClass="org.eclipse.core.resources.IFile"
-      nameFilter="*.myfile">
+      nameFilter="*.union">
    <filter
          name="projectNature"
          value="org.eclipse.jdt.core.javanature">

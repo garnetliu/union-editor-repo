@@ -29,6 +29,7 @@ import org.eclipse.jdt.core.ElementChangedEvent;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IElementChangedListener;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
@@ -44,14 +45,15 @@ import ast.Ast.Union;
 
 public class JavaFileSystem {
 
-	private IWorkspace workspace;
+	static final String UNION_SUFFIX = "union";
+
 	private IWorkspaceRoot root;
 	private IProject project;
 	private IFolder folder;
-	IPackageFragment fragment;
-	List<Union> unions;
-	List<ICompilationUnit> javaFiles;
-
+	private IJavaProject javaProject;
+	private IPackageFragment fragment;
+	private List<Union> unions;
+	
 	// Constructor
 	public JavaFileSystem() throws CoreException, IOException {
 		/*
@@ -71,7 +73,7 @@ public class JavaFileSystem {
 
 		// create the project
 		project.setDescription(description, null);
-		IJavaProject javaProject = JavaCore.create(project);
+		javaProject = JavaCore.create(project);
 
 		// set the build path
 		IClasspathEntry[] buildPath = {
@@ -89,12 +91,6 @@ public class JavaFileSystem {
 		this.fragment = srcFolder.getPackageFragment("main");
 		if (!fragment.exists()) { srcFolder.createPackageFragment("main", true, null); }
 		
-		/*
-		 * collect all unions and java files
-		 */
-		this.unions = findAllUnions();
-//		this.javaFiles = new ArrayList<ICompilationUnit>();
-//		findAllICompilationUnits(project, "java", javaFiles);
 		
 		// add resource change listener
 		//JavaCore.addElementChangedListener(new MyJavaElementChangeReporter());
@@ -110,11 +106,11 @@ public class JavaFileSystem {
 	// major methods
 	public void associateJavaFiles() throws CoreException, IOException {
 		unions = findAllUnions();
-		List<String> classNames = new ArrayList<String>();
+		List<String> javaFilenames = new ArrayList<String>();
 		for (Union union : unions) {
 			// convert content of union to java style and decide class name
 			String className = "Union" + union.getName();
-			classNames.add(className);
+			javaFilenames.add(className + ".java");
 			FormatUnionClass fu = new FormatUnionClass(union, className);
 			Formatter packageHeading = new Formatter();
 			packageHeading.format("package %s;\n", fragment.getElementName());
@@ -134,17 +130,17 @@ public class JavaFileSystem {
 			
 		}
 		//clear extra java file
-		//clearExtra(classNames);
+		clearExtra(javaFilenames);
 	}
 	
-//	private void clearExtra(List<String> classNames) throws CoreException, IOException {
-//		for (ICompilationUnit javaFile : findAllICompilationUnits(project, "java", javaFiles)) {
-//			if (!classNames.contains(javaFile.getElementName())) {
-//				System.out.println(javaFile.getElementName());
-//				javaFile.delete(true, null);
-//			}
-//		}
-//	}
+	private void clearExtra(List<String> classNames) throws CoreException, IOException {
+		for (ICompilationUnit javaFile : findICompilationUnits(fragment)) {
+			if (!classNames.contains(javaFile.getElementName())) {
+				System.out.println("delete " + javaFile.getElementName());
+				//javaFile.delete(true, null);
+			}
+		}
+	}
 
 
 	public void insertVariants(Integer unionChoice, Integer offset, IDocument document) throws BadLocationException {
@@ -157,12 +153,12 @@ public class JavaFileSystem {
 	public List<Union> findAllUnions() throws CoreException, IOException {
 		List<Union> unions = new ArrayList<Union>();
 		List<IFile> files = new ArrayList<IFile>();
-		files = findFileSuffix(project, "myfile", files);
+		files = findFileSuffix(project, UNION_SUFFIX, files);
 		
 		if (files.size() != 0) {// there is at least one file with wanted affix
 			for (IFile file : files) {
 				InputStream content = file.getContents();
-				// convert *.myfile contents to java style and decide class name				
+				// convert *.union contents to java style and decide class name
 				ConvertUnion cu = new ConvertUnion(content);
 				unions.add(cu.getUnion());
 			}
@@ -170,17 +166,41 @@ public class JavaFileSystem {
 		return unions;
 	}
 
-//	private List<ICompilationUnit> findAllICompilationUnits(
-//			IContainer container, String suffix, List<ICompilationUnit> units) throws CoreException {
-//		for (IResource r : container.members()) {
-//			if (r instanceof IContainer) {
-//				findAllICompilationUnits((IContainer) r, suffix, units);
-//			} else if (r instanceof ICompilationUnit) {
-//					units.add((ICompilationUnit) r);
-//			}
-//		}
-//		return units;
-//	}
+	private List<ICompilationUnit> findAllICompilationUnits() throws CoreException {
+		List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
+		try {
+			IPackageFragmentRoot[] packageFragmentRoots = javaProject.getAllPackageFragmentRoots();
+			for (int i = 0; i < packageFragmentRoots.length; i++) {
+				IPackageFragmentRoot packageFragmentRoot = packageFragmentRoots[i];
+				IJavaElement[] fragments = packageFragmentRoot.getChildren();
+				for (int j = 0; j < fragments.length; j++) {
+					IPackageFragment fragment = (IPackageFragment) fragments[j];
+					IJavaElement[] javaElements = fragment.getChildren();
+					for (int k = 0; k < javaElements.length; k++) {
+						IJavaElement javaElement = javaElements[k];
+						if (javaElement.getElementType() == IJavaElement.COMPILATION_UNIT) {
+							units.add((ICompilationUnit) javaElement);
+						}
+					}
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return units;
+	}
+
+	private List<ICompilationUnit> findICompilationUnits(IPackageFragment fragment) throws CoreException {
+		List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
+		IJavaElement[] javaElements = fragment.getChildren();
+		for (int k = 0; k < javaElements.length; k++) {
+			IJavaElement javaElement = javaElements[k];
+			if (javaElement.getElementType() == IJavaElement.COMPILATION_UNIT) {
+				units.add((ICompilationUnit) javaElement);
+			}
+		}
+		return units;
+	}
 	
 	private List<IFile> findFileSuffix(
 			IContainer container, String suffix, List<IFile> files) throws CoreException {
