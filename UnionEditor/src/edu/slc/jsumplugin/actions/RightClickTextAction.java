@@ -1,4 +1,4 @@
-package unioneditor.actions;
+package edu.slc.jsumplugin.actions;
  
 import java.io.IOException;
 import java.util.ArrayList;
@@ -22,8 +22,8 @@ import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.texteditor.AbstractTextEditor;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 
-import unioneditor.Activator;
-import unioneditor.files.*;
+import edu.slc.jsumplugin.Activator;
+import edu.slc.jsumplugin.files.*;
 import ast.Ast.Union;
  
  

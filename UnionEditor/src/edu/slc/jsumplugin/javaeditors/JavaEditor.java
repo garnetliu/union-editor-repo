@@ -1,4 +1,4 @@
-package unioneditor.javaeditors;
+package edu.slc.jsumplugin.javaeditors;
 
 import org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditor;
 import org.eclipse.jdt.ui.text.JavaSourceViewerConfiguration;

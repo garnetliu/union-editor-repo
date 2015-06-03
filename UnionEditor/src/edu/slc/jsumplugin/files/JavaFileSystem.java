@@ -1,4 +1,4 @@
-package unioneditor.files;
+package edu.slc.jsumplugin.files;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

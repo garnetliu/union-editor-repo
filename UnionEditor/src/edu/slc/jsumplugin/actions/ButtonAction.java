@@ -1,4 +1,4 @@
-package unioneditor.actions;
+package edu.slc.jsumplugin.actions;
 
 import java.io.IOException;
 
@@ -12,7 +12,7 @@ import org.eclipse.core.resources.IResourceChangeListener;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 
-import unioneditor.files.*;
+import edu.slc.jsumplugin.files.*;
 
 
 /**

@@ -1,4 +1,4 @@
-package unioneditor.editors;
+package edu.slc.jsumplugin.editors;
 
 import java.util.HashMap;
 import java.util.Iterator;

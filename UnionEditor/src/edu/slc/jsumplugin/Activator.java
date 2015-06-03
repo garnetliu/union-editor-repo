@@ -1,4 +1,4 @@
-package unioneditor;
+package edu.slc.jsumplugin;
 
 import org.eclipse.core.resources.IResourceChangeEvent;
 import org.eclipse.core.resources.IResourceChangeListener;

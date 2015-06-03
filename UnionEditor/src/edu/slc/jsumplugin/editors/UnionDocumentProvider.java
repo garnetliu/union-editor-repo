@@ -1,4 +1,4 @@
-package unioneditor.editors;
+package edu.slc.jsumplugin.editors;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;

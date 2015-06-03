@@ -1,4 +1,4 @@
-package unioneditor.editors;
+package edu.slc.jsumplugin.editors;
 
 import org.eclipse.jface.text.TextAttribute;
 import org.eclipse.jface.text.rules.EndOfLineRule;

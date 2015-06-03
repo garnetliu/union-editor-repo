@@ -1,4 +1,4 @@
-package unioneditor.files;
+package edu.slc.jsumplugin.files;
 
 import org.eclipse.jdt.core.ElementChangedEvent;
 import org.eclipse.jdt.core.IElementChangedListener;

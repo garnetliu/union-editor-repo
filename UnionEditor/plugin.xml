@@ -10,7 +10,7 @@
             icon="icons/sample.gif"
             extensions="myfile"
             contributorClass="org.eclipse.ui.editors.text.TextEditorActionContributor"
-            class="unioneditor.editors.UnionEditor"
+            class="edu.slc.jsumplugin.editors.UnionEditor"
             id="org.eclipse.ui.editors.text.texteditor">
       </editor>
    </extension>
@@ -31,7 +31,7 @@
          <action
                label="&amp;Sample Action"
                icon="icons/sample.gif"
-               class="unioneditor.actions.ButtonAction"
+               class="edu.slc.jsumplugin.actions.ButtonAction"
                tooltip="Hello, Eclipse world"
                menubarPath="sampleMenu/sampleGroup"
                toolbarPath="sampleGroup"
@@ -55,7 +55,7 @@
          label="Object Action 1"
          icon="icons/sample.gif"
          menubarPath="additions" 
-      class="unioneditor.actions.RightClickFileAction"> 
+      class="edu.slc.jsumplugin.actions.RightClickFileAction"> 
       </action> 
    </objectContribution> 
    </extension>
@@ -69,7 +69,7 @@
             id="SimplePopupMenu.contribution1">
          <action
                label="show unions"
-               class="unioneditor.actions.RightClickTextAction"
+               class="edu.slc.jsumplugin.actions.RightClickTextAction"
                menubarPath="additions"
                enablesFor="1"
                id="SimplePopupMenu.newAction">

@@ -1,4 +1,4 @@
-package unioneditor.actions;
+package edu.slc.jsumplugin.actions;
 
 import java.io.IOException;
 
@@ -10,7 +10,7 @@ import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionDelegate;
 
-import unioneditor.files.JavaFileSystem;
+import edu.slc.jsumplugin.files.JavaFileSystem;
 
 public class RightClickFileAction extends ActionDelegate implements IEditorActionDelegate {
 	

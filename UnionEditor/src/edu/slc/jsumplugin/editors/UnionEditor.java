@@ -1,4 +1,4 @@
-package unioneditor.editors;//include org.eclipse.jface...in the required plug-ins
+package edu.slc.jsumplugin.editors;//include org.eclipse.jface...in the required plug-ins
 
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.ui.actions.ActionFactory;
