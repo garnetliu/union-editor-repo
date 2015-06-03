@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>UnionEditor</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>org.eclipse.jdt.core.javabuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+		<buildCommand>
+			<name>org.eclipse.pde.ManifestBuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+		<buildCommand>
+			<name>org.eclipse.pde.SchemaBuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>org.eclipse.pde.PluginNature</nature>
+		<nature>org.eclipse.jdt.core.javanature</nature>
+	</natures>
+	<linkedResources>
+		<link>
+			<name>libs/antlr-4.4-complete.jar</name>
+			<type>1</type>
+			<location>/Users/aisishayao/Dropbox/SLC 2012-15/slc 2014-15/course_compilers/antlr-4.4-complete.jar</location>
+		</link>
+		<link>
+			<name>libs/union.jar</name>
+			<type>1</type>
+			<location>/Users/aisishayao/Dropbox/SLC 2012-15/slc 2014-15/summer research/union.jar</location>
+		</link>
+	</linkedResources>
+</projectDescription>

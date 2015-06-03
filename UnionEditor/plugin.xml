@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+
+<plugin>
+
+   <extension
+         point="org.eclipse.ui.editors">
+      <editor
+            name="MyEditor"
+            icon="icons/sample.gif"
+            extensions="myfile"
+            contributorClass="org.eclipse.ui.editors.text.TextEditorActionContributor"
+            class="unioneditor.editors.UnionEditor"
+            id="org.eclipse.ui.editors.text.texteditor">
+      </editor>
+   </extension>
+   
+   <extension
+         point="org.eclipse.ui.actionSets">
+      <actionSet
+            label="Button action"
+            visible="true"
+            id="CreateProject.actionSet">
+         <menu
+               label="Sample &amp;Menu"
+               id="sampleMenu">
+            <separator
+                  name="sampleGroup">
+            </separator>
+         </menu>
+         <action
+               label="&amp;Sample Action"
+               icon="icons/sample.gif"
+               class="unioneditor.actions.ButtonAction"
+               tooltip="Hello, Eclipse world"
+               menubarPath="sampleMenu/sampleGroup"
+               toolbarPath="sampleGroup"
+               id="myeditor.actions.ButtonAction">
+         </action>
+      </actionSet>
+   </extension>
+   
+   
+   <extension point="org.eclipse.ui.popupMenus"> 
+   <objectContribution 
+      id="org.eclipse.ui.articles.action.contribution.popup.object"
+      objectClass="org.eclipse.core.resources.IFile"
+      nameFilter="*.myfile">
+   <filter
+         name="projectNature"
+         value="org.eclipse.jdt.core.javanature">
+      </filter>
+      <action
+         id="org.eclipse.ui.articles.action.contribution.object.action1" 
+         label="Object Action 1"
+         icon="icons/sample.gif"
+         menubarPath="additions" 
+      class="unioneditor.actions.RightClickFileAction"> 
+      </action> 
+   </objectContribution> 
+   </extension>
+
+
+   <extension
+         point="org.eclipse.ui.popupMenus">
+      <objectContribution
+            objectClass="org.eclipse.ui.IEditorInput"
+            nameFilter="*.*"
+            id="SimplePopupMenu.contribution1">
+         <action
+               label="show unions"
+               class="unioneditor.actions.RightClickTextAction"
+               menubarPath="additions"
+               enablesFor="1"
+               id="SimplePopupMenu.newAction">
+         </action>
+      </objectContribution>
+   </extension>
+
+</plugin>
