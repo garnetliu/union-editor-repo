@@ -18,7 +18,7 @@
    <extension
          point="org.eclipse.ui.actionSets">
       <actionSet
-            label="Button action"
+            label="Button Action"
             visible="true"
             id="CreateProject.actionSet">
          <menu
@@ -68,7 +68,7 @@
             nameFilter="*.*"
             id="SimplePopupMenu.contribution1">
          <action
-               label="show unions"
+               label="Show Unions"
                class="edu.slc.jsumplugin.actions.RightClickTextAction"
                menubarPath="additions"
                enablesFor="1"

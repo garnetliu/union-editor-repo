@@ -1,15 +1,10 @@
 package edu.slc.jsumplugin.files;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Formatter;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-
 import main.ConvertUnion;
 import format.*;
 
@@ -21,27 +16,20 @@ import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceChangeEvent;
 import org.eclipse.core.resources.IResourceChangeListener;
-import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.jdt.core.ElementChangedEvent;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.IElementChangedListener;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
-import org.eclipse.text.edits.InsertEdit;
-import org.eclipse.text.edits.MultiTextEdit;
-
-import ast.Ast.Union;
+import ast.Ast.*;
 
 public class JavaFileSystem {
 
@@ -49,10 +37,10 @@ public class JavaFileSystem {
 
 	private IWorkspaceRoot root;
 	private IProject project;
-	private IFolder folder;
 	private IJavaProject javaProject;
+	private IFolder folder;
 	private IPackageFragment fragment;
-	private List<Union> unions;
+	private List<Unions> unions;
 	
 	// Constructor
 	public JavaFileSystem() throws CoreException, IOException {
@@ -107,7 +95,7 @@ public class JavaFileSystem {
 	public void associateJavaFiles() throws CoreException, IOException {
 		unions = findAllUnions();
 		List<String> javaFilenames = new ArrayList<String>();
-		for (Union union : unions) {
+		for (Unions union : unions) {
 			// convert content of union to java style and decide class name
 			String className = "Union" + union.getName();
 			javaFilenames.add(className + ".java");
@@ -129,31 +117,30 @@ public class JavaFileSystem {
 			}
 			
 		}
-		//clear extra java file
+		// report/clear extra java file
 		clearExtra(javaFilenames);
 	}
 	
 	private void clearExtra(List<String> classNames) throws CoreException, IOException {
 		for (ICompilationUnit javaFile : findICompilationUnits(fragment)) {
 			if (!classNames.contains(javaFile.getElementName())) {
-				System.out.println("delete " + javaFile.getElementName());
+				System.out.println("found additional java file: " + javaFile.getElementName());
 				//javaFile.delete(true, null);
 			}
 		}
 	}
 
-
-	public void insertVariants(Integer unionChoice, Integer offset, IDocument document) throws BadLocationException {
-		FormatUnionVariants fv = new FormatUnionVariants(unions.get(unionChoice));
+	public void insertVariants(int unionsChoice, int unionChoice, int offset, IDocument document) throws BadLocationException, CoreException, IOException {
+		unions = findAllUnions();
+		FormatUnionVariants fv = new FormatUnionVariants(unions.get(unionsChoice), unionChoice);
 		document.replace(offset, 0, fv.toString());
 	}
 	
 	// helper methods-----------------------------------
-	
-	public List<Union> findAllUnions() throws CoreException, IOException {
-		List<Union> unions = new ArrayList<Union>();
+	public List<Unions> findAllUnions() throws CoreException, IOException {// bin and src both as IContainer, so repetition happens if searching by project
+		List<Unions> unions = new ArrayList<Unions>();
 		List<IFile> files = new ArrayList<IFile>();
-		files = findFileSuffix(project, UNION_SUFFIX, files);
+		files = findFileSuffix(folder, UNION_SUFFIX, files);
 		
 		if (files.size() != 0) {// there is at least one file with wanted affix
 			for (IFile file : files) {
@@ -209,7 +196,7 @@ public class JavaFileSystem {
 				findFileSuffix((IContainer) r, suffix, files);
 			} else if (r instanceof IFile
 					&& r.getName().substring(r.getName().lastIndexOf('.') + 1).equals(suffix)) {
-					files.add((IFile) r);
+				files.add((IFile) r);
 			}
 		}
 		return files;

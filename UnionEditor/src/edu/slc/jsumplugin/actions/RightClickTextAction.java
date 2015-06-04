@@ -24,7 +24,7 @@ import org.eclipse.ui.texteditor.IDocumentProvider;
 
 import edu.slc.jsumplugin.Activator;
 import edu.slc.jsumplugin.files.*;
-import ast.Ast.Union;
+import ast.Ast.*;
  
  
 public class RightClickTextAction implements IObjectActionDelegate {
@@ -71,21 +71,31 @@ public class RightClickTextAction implements IObjectActionDelegate {
 							length = ((ITextSelection) iSelection).getLength();
 							
 							//get union names
-							List<Union> unions = jf.findAllUnions();
+							List<Unions> unions = jf.findAllUnions();
 							String[] unions_names = new String[unions.size()];
 							for (int i = 0; i < unions.size(); i++) {
 								unions_names[i] = unions.get(i).getName();
-							}				
+							}
+							
 							
 							//report in popup menu
-							//MessageDialog.openInformation(shell, "Show text selection", "Length: " + length + "    Offset: " + offset);
-							MessageDialog md = new  MessageDialog(shell, "Insert expand", null,
-									"Length: " + length + "    Offset: " + offset, 0 , unions_names, 0);							
+							MessageDialog chooseUnions = new  MessageDialog(shell, "Insert expand", null,
+									"Length: " + length + "    Offset: " + offset, 0 , unions_names, 0);	
+							int unionsChoice = chooseUnions.open();
+							
+							//get separate unions in another popup menu
+							int unionChoice = 0;
+							String[] union_names = unions.get(unionsChoice).getNames().toArray(new String[0]);
+							if (union_names.length > 1) {
+								MessageDialog chooseUnion = new  MessageDialog(shell, "Insert expand", null,
+										"Length: " + length + "    Offset: " + offset, 0 , union_names, 0);
+								unionChoice = chooseUnion.open();
+							}
 
 							 //insert variants
 							 IDocumentProvider provider = ((AbstractTextEditor) editorPart).getDocumentProvider();
 							 IDocument document = provider.getDocument(editorPart.getEditorInput());
-							 jf.insertVariants(md.open(), offset, document);
+							 jf.insertVariants(unionsChoice, unionChoice, offset, document);
 						}
 					}
 				}
