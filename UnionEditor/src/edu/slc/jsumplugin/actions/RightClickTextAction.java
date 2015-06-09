@@ -44,63 +44,61 @@ public class RightClickTextAction implements IObjectActionDelegate {
  
 	@Override
 	public void run(IAction action) {
-		try {
-			//get editor
-			IEditorPart editorPart = Activator.getDefault().getWorkbench()
-					.getActiveWorkbenchWindow().getActivePage()
-					.getActiveEditor();
-			
-			if (editorPart instanceof AbstractTextEditor) {
-				int offset = 0;
-				int length = 0;
-				String selectedText = null;
-				IEditorSite iEditorSite = editorPart.getEditorSite();
-				if (iEditorSite != null) {
-					//get selection provider
-					ISelectionProvider selectionProvider = iEditorSite
-							.getSelectionProvider();
-					if (selectionProvider != null) {
-						ISelection iSelection = selectionProvider
-								.getSelection();
-						//offset
-						offset = ((ITextSelection) iSelection).getOffset();
-						if (!iSelection.isEmpty()) {
-							selectedText = ((ITextSelection) iSelection)
-									.getText();
-							//length
-							length = ((ITextSelection) iSelection).getLength();
-							
-							//get union names
-							List<Unions> unions = jf.findAllUnions();
-							String[] unions_names = new String[unions.size()];
-							for (int i = 0; i < unions.size(); i++) {
-								unions_names[i] = unions.get(i).getName();
-							}
-							
-							
-							//report in popup menu
-							MessageDialog chooseUnions = new  MessageDialog(shell, "Insert expand", null,
-									"Length: " + length + "    Offset: " + offset, 0 , unions_names, 0);	
-							int unionsChoice = chooseUnions.open();
-							
-							//get separate unions in another popup menu
-							int unionChoice = 0;
-							String[] union_names = unions.get(unionsChoice).getNames().toArray(new String[0]);
-							if (union_names.length > 1) {
-								MessageDialog chooseUnion = new  MessageDialog(shell, "Insert expand", null,
-										"Length: " + length + "    Offset: " + offset, 0 , union_names, 0);
-								unionChoice = chooseUnion.open();
-							}
-
-							 //insert variants
-							 IDocumentProvider provider = ((AbstractTextEditor) editorPart).getDocumentProvider();
-							 IDocument document = provider.getDocument(editorPart.getEditorInput());
-							 jf.insertVariants(unionsChoice, unionChoice, offset, document);
-						}
-					}
-				}
-			}
-		} catch (Exception e) {}
+//		try {
+//			//get editor
+//			IEditorPart editorPart = Activator.getDefault().getWorkbench()
+//					.getActiveWorkbenchWindow().getActivePage()
+//					.getActiveEditor();
+//			
+//			if (editorPart instanceof AbstractTextEditor) {
+//				int offset = 0;
+//				int length = 0;
+//				String selectedText = null;
+//				IEditorSite iEditorSite = editorPart.getEditorSite();
+//				if (iEditorSite != null) {
+//					//get selection provider
+//					ISelectionProvider selectionProvider = iEditorSite
+//							.getSelectionProvider();
+//					if (selectionProvider != null) {
+//						ISelection iSelection = selectionProvider
+//								.getSelection();
+//						//offset
+//						offset = ((ITextSelection) iSelection).getOffset();
+//						if (!iSelection.isEmpty()) {
+//							selectedText = ((ITextSelection) iSelection)
+//									.getText();
+//							//length
+//							length = ((ITextSelection) iSelection).getLength();
+//							
+//							//get all union names in all unions
+//							List<Unions> unions = jf.findAllUnions();
+//							List<String> union_names = new ArrayList<String>();
+//							for (Unions us : unions) {
+//								for (String union_name : us.getNames()) {
+//									union_names.add(union_name);
+//								}
+//							}
+//							
+//							String[] unions_names = new String[unions.size()];
+//							for (int i = 0; i < unions.size(); i++) {
+//								unions_names[i] = unions.get(i).getName();
+//							}
+//							
+//							// report in popup menu
+//							MessageDialog chooseUnion = new  MessageDialog(shell, "Insert expand", null,
+//									"Length: " + length + "    Offset: " + offset, 0 ,
+//									union_names.toArray(new String[union_names.size()]), 0);	
+//							int unionChoice = chooseUnion.open();
+//
+//							 //insert variants
+//							 IDocumentProvider provider = ((AbstractTextEditor) editorPart).getDocumentProvider();
+//							 IDocument document = provider.getDocument(editorPart.getEditorInput());
+//							 jf.insertVariants(unionChoice, offset, document);
+//						}
+//					}
+//				}
+//			}
+//		} catch (Exception e) {}
 	}
  
  

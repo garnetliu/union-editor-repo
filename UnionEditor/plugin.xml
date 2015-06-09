@@ -52,7 +52,7 @@
       </filter>
       <action
          id="org.eclipse.ui.articles.action.contribution.object.action1" 
-         label="Object Action 1"
+         label="Associate Java File"
          icon="icons/sample.gif"
          menubarPath="additions" 
       class="edu.slc.jsumplugin.actions.RightClickFileAction"> 
