@@ -37,6 +37,7 @@ import ast.Ast.*;
 public class JavaFileSystem {
 
 	static final String UNION_SUFFIX = "union";
+	static final String UNION_CLASSHEADER = "Union";
 
 	private IWorkspaceRoot root;
 	private IProject project;
@@ -100,27 +101,30 @@ public class JavaFileSystem {
 		List<String> javaFilenames = new ArrayList<String>();
 		for (Unions unions : listOfUnions) {
 			createUnionClass(unions, javaFilenames);
-			createTraversal(unions);
 			if (unions.hasVisitors()) {
 			createVisitorInterface(unions);
 			createVisitorInterpreter(unions);
+			} else {
+				createInstance(unions);
 			}
 		}
 	}
 	
-	private void createTraversal(Unions unions) throws JavaModelException {
+	private void createInstance(Unions unions) throws JavaModelException {
 		for (Traversal t : unions.traversals) {
 			String className = Character.toUpperCase(t.name.charAt(0)) + t.name.substring(1) + unions.getName();
 			FormatUnionTraversal fut = new FormatUnionTraversal(unions, t.name);
 			Formatter packageHeading = new Formatter();
 			packageHeading.format("package %s;\n", fragment.getElementName());
+			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_CLASSHEADER + unions.getName());
 			String classContent = packageHeading.toString() + fut.toString();
 			packageHeading.close();
 			// create java file
 			ICompilationUnit newFile = fragment.getCompilationUnit(className+".java");
 			if (newFile.exists()) {
 				// replace the content of original buffer
-				newFile.getBuffer().replace(0, newFile.getBuffer().getLength(), classContent);
+				System.out.printf("file %s already exists...\n", className+".java");
+				//newFile.getBuffer().replace(0, newFile.getBuffer().getLength(), classContent);
 			} else {
 				fragment.createCompilationUnit(className + ".java", classContent, false, null);
 			}
@@ -128,19 +132,21 @@ public class JavaFileSystem {
 	}
 
 
-	private void createVisitorInterpreter(Unions union) throws JavaModelException {
-		for (String union_name : union.getNames()) {
+	private void createVisitorInterpreter(Unions unions) throws JavaModelException {
+		for (String union_name : unions.getNames()) {
 			String className = union_name + "Interpreter";
-			FormatVisitorInterpreter fvi = new FormatVisitorInterpreter(union, union_name);
+			FormatVisitorInterpreter fvi = new FormatVisitorInterpreter(unions, union_name);
 			Formatter packageHeading = new Formatter();
 			packageHeading.format("package %s;\n", fragment.getElementName());
+			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_CLASSHEADER + unions.getName());
 			String classContent = packageHeading.toString() + fvi.toString();
 			packageHeading.close();
 			// create java file
 			ICompilationUnit newFile = fragment.getCompilationUnit(className+".java");
 			if (newFile.exists()) {
 				// replace the content of original buffer
-				newFile.getBuffer().replace(0, newFile.getBuffer().getLength(), classContent);
+				//newFile.getBuffer().replace(0, newFile.getBuffer().getLength(), classContent);
+				System.out.printf("file %s already exists...\n", className+".java");
 			} else {
 				fragment.createCompilationUnit(className + ".java", classContent, false, null);
 			}
@@ -149,19 +155,21 @@ public class JavaFileSystem {
 	}
 
 
-	private void createVisitorInterface(Unions union) throws JavaModelException {
-		for (String union_name : union.getNames()) {
+	private void createVisitorInterface(Unions unions) throws JavaModelException {
+		for (String union_name : unions.getNames()) {
 			String className = union_name + "Visitor";
-			FormatVisitorInterface fvi = new FormatVisitorInterface(union, union_name);
+			FormatVisitorInterface fvi = new FormatVisitorInterface(unions, union_name);
 			Formatter packageHeading = new Formatter();
 			packageHeading.format("package %s;\n", fragment.getElementName());
+			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_CLASSHEADER + unions.getName());
 			String classContent = packageHeading.toString() + fvi.toString();
 			packageHeading.close();
 			// create java file
 			ICompilationUnit newFile = fragment.getCompilationUnit(className+".java");
 			if (newFile.exists()) {
 				// replace the content of original buffer
-				newFile.getBuffer().replace(0, newFile.getBuffer().getLength(), classContent);
+				//newFile.getBuffer().replace(0, newFile.getBuffer().getLength(), classContent);
+				System.out.printf("file %s already exists...\n", className+".java");
 			} else {
 				fragment.createCompilationUnit(className + ".java", classContent, false, null);
 			}
@@ -171,7 +179,7 @@ public class JavaFileSystem {
 
 	private void createUnionClass(Unions union, List<String> javaFilenames) throws CoreException, IOException {
 		// convert content of union to java style and decide class name
-		String className = "Union" + union.getName();
+		String className = UNION_CLASSHEADER + union.getName();
 		javaFilenames.add(className + ".java");
 		FormatUnionClass fu = new FormatUnionClass(union, className);
 		Formatter packageHeading = new Formatter();
@@ -189,17 +197,15 @@ public class JavaFileSystem {
 		} else {
 			fragment.createCompilationUnit(className + ".java", classContent, false, null);
 		}
-		
 		// report/clear extra java file
 		clearExtra(javaFilenames);
-
 	}
 
 
 	private void clearExtra(List<String> classNames) throws CoreException, IOException {
 		for (ICompilationUnit javaFile : findICompilationUnits(fragment)) {
-			if (!classNames.contains(javaFile.getElementName())) {
-				System.out.println("found additional java file: " + javaFile.getElementName());
+			if (!classNames.contains(javaFile.getElementName()) && javaFile.getElementName().substring(0, 4).equals("Union")) {
+				System.out.println("found additional union java file: " + javaFile.getElementName());
 				//javaFile.delete(true, null);
 			}
 		}
