@@ -21,7 +21,7 @@ public class RightClickFileAction extends ActionDelegate implements IEditorActio
 	 * @throws IOException 
 	 */
 	public RightClickFileAction() throws CoreException, IOException {
-		this.jf = new JavaFileSystem();
+		this.jf = new JavaFileSystem("TestJavaProject");
 	}
 	
 

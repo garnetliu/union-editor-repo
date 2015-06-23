@@ -33,7 +33,7 @@ public class RightClickTextAction implements IObjectActionDelegate {
  
 	public RightClickTextAction() throws CoreException, IOException {
 		super();
-		this.jf = new JavaFileSystem();
+		this.jf = new JavaFileSystem("TestJavaProject");
 	}
  
 	@Override

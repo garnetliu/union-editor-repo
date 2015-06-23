@@ -32,7 +32,7 @@ public class ButtonAction implements IWorkbenchWindowActionDelegate {
 	 * @throws IOException 
 	 */
 	public ButtonAction() throws CoreException, IOException {
-		this.jf = new JavaFileSystem();
+		//this.jf = new JavaFileSystem();
 	}
 
 	/**
@@ -43,8 +43,17 @@ public class ButtonAction implements IWorkbenchWindowActionDelegate {
 	 */
 	public void run(IAction action) {
 		MessageDialog.openInformation(window.getShell(), "Set up",
-				"find/build project and path");
+				"check first block");
 
+			try {
+				JavaFileSystem js = new JavaFileSystem("TestJavaProject");
+				JavaFileModification jm = new JavaFileModification(js.fragment.getCompilationUnits()[1]);
+				//jm.checkConditionExpression();
+				jm.getAnnotations(js.fragment.getCompilationUnits()[0]);
+			} catch (CoreException | IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 	}
 
 	/**

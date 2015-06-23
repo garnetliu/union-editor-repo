@@ -5,54 +5,43 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.List;
+import java.util.Set;
 
 import main.ConvertUnion;
 import format.*;
+import edu.slc.jsumplugin.files.*;
 
-import org.eclipse.core.resources.IContainer;
-import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IFolder;
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IProjectDescription;
-import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.IResourceChangeEvent;
-import org.eclipse.core.resources.IResourceChangeListener;
-import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.resources.*;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.jdt.core.IClasspathEntry;
-import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IJavaProject;
-import org.eclipse.jdt.core.IPackageFragment;
-import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.*;
+import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jface.text.BadLocationException;
-import org.eclipse.jface.text.IDocument;
+import org.eclipse.text.edits.MalformedTreeException;
 
 import ast.Ast.*;
 
 public class JavaFileSystem {
 
 	static final String UNION_SUFFIX = "union";
-	static final String UNION_CLASSHEADER = "Union";
+	static final String UNION_UNITHEADER = "Union";
 
 	private IWorkspaceRoot root;
-	private IProject project;
-	private IJavaProject javaProject;
-	private IFolder folder;
-	private IPackageFragment fragment;
-	private List<Unions> listOfUnions;
+	public IProject project;
+	public IJavaProject javaProject;
+	public IFolder folder;
+	public IPackageFragment fragment;
+	public List<Unions> listOfUnions;
 	
-	// Constructor
-	public JavaFileSystem() throws CoreException, IOException {
+	private List<Unions> previousUnions;
+	
+	// Constructor with project name
+	public JavaFileSystem(String projectName) throws CoreException, IOException {
 		/*
 		 * set up project
 		 */
 		this.root = ResourcesPlugin.getWorkspace().getRoot();
-		this.project = root.getProject("TestJavaProject");
+		this.project = root.getProject(projectName);
 		this.folder = project.getFolder("src");
 		
 		// create a project
@@ -79,44 +68,71 @@ public class JavaFileSystem {
 		// Add folder to Java element
 		IPackageFragmentRoot srcFolder = javaProject.getPackageFragmentRoot(folder);
 
+		
 		// create package fragment
 		this.fragment = srcFolder.getPackageFragment("main");
 		if (!fragment.exists()) { srcFolder.createPackageFragment("main", true, null); }
 		
+		this.listOfUnions = findAllUnions();
+		this.previousUnions = null;
 		
 		// add resource change listener
-		//JavaCore.addElementChangedListener(new MyJavaElementChangeReporter());
-		ResourcesPlugin.getWorkspace().addResourceChangeListener(
-				new IResourceChangeListener() {
-					public void resourceChanged(IResourceChangeEvent event) {
-						System.out.println("Something changed!");
-					}
-				});
+		JavaCore.addPreProcessingResourceChangedListener(new MyResourceChangeReporter());
 	}
 
 
-	// major methods
+	/*
+	 * create files-------------------------------------------------------------------------------------
+	 */
 	public void associateJavaFiles() throws CoreException, IOException {
 		listOfUnions = findAllUnions();
 		List<String> javaFilenames = new ArrayList<String>();
+		int i = 0;
 		for (Unions unions : listOfUnions) {
 			createUnionClass(unions, javaFilenames);
 			if (unions.hasVisitors()) {
-			createVisitorInterface(unions);
-			createVisitorInterpreter(unions);
+				createVisitorInterface(unions);
+				createVisitorInterpreter(unions);
 			} else {
-				createInstance(unions);
+				createInstance(unions, previousUnions.get(i));
+			}
+			i++;
+		}
+	}
+	
+	private void createInstance(Unions unions, Unions unions_beforeEdit) throws JavaModelException {
+		for (Traversal t : unions.getTraversals()) {
+			String className = Character.toUpperCase(t.name.charAt(0)) + t.name.substring(1) + unions.getName();
+			// create java file
+			ICompilationUnit newFile = fragment.getCompilationUnit(className + ".java");
+			if (newFile.exists()) {
+				// replace the content of original buffer
+				System.out.printf("file %s already exists...check\n", className + ".java");
+				try {
+					JavaFileModification.modifyInstance(newFile, t, unions_beforeEdit, unions);
+				} catch (IllegalArgumentException | MalformedTreeException | BadLocationException e) {
+					e.printStackTrace();
+				}
+			} else {
+				FormatUnionInstance fut = new FormatUnionInstance(unions, t.name);
+				Formatter packageHeading = new Formatter();
+				packageHeading.format("package %s;\n", fragment.getElementName());
+				packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_UNITHEADER + unions.getName());
+				String classContent = packageHeading.toString() + fut.toString();
+				packageHeading.close();
+				fragment.createCompilationUnit(className + ".java", classContent, false, null);
 			}
 		}
 	}
 	
+	//original
 	private void createInstance(Unions unions) throws JavaModelException {
-		for (Traversal t : unions.traversals) {
+		for (Traversal t : unions.getTraversals()) {
 			String className = Character.toUpperCase(t.name.charAt(0)) + t.name.substring(1) + unions.getName();
-			FormatUnionTraversal fut = new FormatUnionTraversal(unions, t.name);
+			FormatUnionInstance fut = new FormatUnionInstance(unions, t.name);
 			Formatter packageHeading = new Formatter();
 			packageHeading.format("package %s;\n", fragment.getElementName());
-			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_CLASSHEADER + unions.getName());
+			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_UNITHEADER + unions.getName());
 			String classContent = packageHeading.toString() + fut.toString();
 			packageHeading.close();
 			// create java file
@@ -138,7 +154,7 @@ public class JavaFileSystem {
 			FormatVisitorInterpreter fvi = new FormatVisitorInterpreter(unions, union_name);
 			Formatter packageHeading = new Formatter();
 			packageHeading.format("package %s;\n", fragment.getElementName());
-			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_CLASSHEADER + unions.getName());
+			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_UNITHEADER + unions.getName());
 			String classContent = packageHeading.toString() + fvi.toString();
 			packageHeading.close();
 			// create java file
@@ -161,7 +177,7 @@ public class JavaFileSystem {
 			FormatVisitorInterface fvi = new FormatVisitorInterface(unions, union_name);
 			Formatter packageHeading = new Formatter();
 			packageHeading.format("package %s;\n", fragment.getElementName());
-			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_CLASSHEADER + unions.getName());
+			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_UNITHEADER + unions.getName());
 			String classContent = packageHeading.toString() + fvi.toString();
 			packageHeading.close();
 			// create java file
@@ -177,11 +193,11 @@ public class JavaFileSystem {
 	}
 
 
-	private void createUnionClass(Unions union, List<String> javaFilenames) throws CoreException, IOException {
+	private void createUnionClass(Unions unions, List<String> javaFilenames) throws CoreException, IOException {
 		// convert content of union to java style and decide class name
-		String className = UNION_CLASSHEADER + union.getName();
+		String className = UNION_UNITHEADER + unions.getName();
 		javaFilenames.add(className + ".java");
-		FormatUnionClass fu = new FormatUnionClass(union, className);
+		FormatUnionClass fu = new FormatUnionClass(unions, className);
 		Formatter packageHeading = new Formatter();
 		packageHeading.format("package %s;\n", fragment.getElementName());
 		String classContent = packageHeading.toString() + fu.toString();
@@ -190,10 +206,10 @@ public class JavaFileSystem {
 		// MultiTextEdit edit = new MultiTextEdit(); edit.addChild(new InsertEdit(0, fu.toString()));
 
 		// create java file
-		ICompilationUnit newFile = fragment.getCompilationUnit(className+".java");
-		if (newFile.exists()) {
+		ICompilationUnit iUnit = fragment.getCompilationUnit(className+".java");
+		if (iUnit.exists()) {
 			// replace the content of original buffer
-			newFile.getBuffer().replace(0, newFile.getBuffer().getLength(), classContent);
+			iUnit.getBuffer().replace(0, iUnit.getBuffer().getLength(), classContent);
 		} else {
 			fragment.createCompilationUnit(className + ".java", classContent, false, null);
 		}
@@ -202,19 +218,23 @@ public class JavaFileSystem {
 	}
 
 
+	/*
+	 * check files-------------------------------------------------------------------------------------
+	 */
 	private void clearExtra(List<String> classNames) throws CoreException, IOException {
-		for (ICompilationUnit javaFile : findICompilationUnits(fragment)) {
-			if (!classNames.contains(javaFile.getElementName()) && javaFile.getElementName().substring(0, 4).equals("Union")) {
-				System.out.println("found additional union java file: " + javaFile.getElementName());
+		for (ICompilationUnit iUnit : findICompilationUnits(fragment)) {
+			if (!classNames.contains(iUnit.getElementName()) && iUnit.getElementName().substring(0, 4).equals("Union")) {
+				System.out.println("found additional union java file: " + iUnit.getElementName());
 				//javaFile.delete(true, null);
 			}
 		}
 	}
 
-
 	
-	// helper methods-----------------------------------
-	public List<Unions> findAllUnions() throws CoreException, IOException {// bin and src both as IContainer, so repetition happens if searching by project
+	/*
+	 * helper methods-------------------------------------------------------------------------------------
+	 */
+	public List<Unions> findAllUnions() throws CoreException, IOException {// bin and src both as IContainer, so repetition happens if searching inside of project
 		List<Unions> unions = new ArrayList<Unions>();
 		List<IFile> files = new ArrayList<IFile>();
 		files = findFileSuffix(folder, UNION_SUFFIX, files);
@@ -227,8 +247,66 @@ public class JavaFileSystem {
 				unions.add(cu.getUnion());
 			}
 		}
+		
+		previousUnions = listOfUnions;
 		return unions;
 	}
+
+//	private void compareUnions(List<Unions> beforeEdit, List<Unions> afterEdit) {
+//		for (int i = 0; i < beforeEdit.size(); i++) {
+//			
+//		}
+//		
+//	}
+//
+//	public void compareUnions(Unions afterEdit, Unions beforeEdit) {
+//		if (!afterEdit.importText.equals(beforeEdit.importText)) {
+//			// replace import text portion
+//		}
+//		if (afterEdit.hasVisitors() != beforeEdit.hasVisitors()) {
+//			// pops a message box asking user if they really want to change mode
+//		}
+//		
+//		int before = beforeEdit.unions.size();
+//		int after = afterEdit.unions.size();
+//		for (String union_name : afterEdit.unions.keySet()) {
+//			if (!beforeEdit.unions.containsKey(union_name)) {
+//				before++;
+//				// add this additional union with all the corresponding variants, but what if it's only renamed?
+//				
+//			}
+//			else {
+//				compareVariants(afterEdit.unions.get(union_name), beforeEdit.unions.get(union_name));
+//				// check if there are additional variants or args
+//			}
+//		}
+//		if (before != after) {
+//			for (String union_name : beforeEdit.unions.keySet()) {
+//				if (!afterEdit.unions.containsKey(union_name)) {
+//					//remove or comment out extra variant that got deleted after edit
+//				}
+//			}
+//		}
+//		
+//		compareTraversals(afterEdit.traversals, beforeEdit.traversals);
+//	}
+//
+//	private void compareTraversals(List<Traversal> traversals, List<Traversal> beforeEditTraversals) {
+//		for (Traversal t : traversals) {
+//			if (!beforeEditTraversals.contains(t)) {
+//				
+//			}
+//		}
+//	}
+//
+//	private void compareVariants(Set<Variant> variants, Set<Variant> beforeEditVariants) {
+//		for (Variant v : variants) {
+//			if (!beforeEditVariants.contains(v)) {
+//				
+//			}
+//		}
+//		
+//	}
 
 	private List<ICompilationUnit> findAllICompilationUnits() throws CoreException {
 		List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
@@ -290,4 +368,6 @@ public class JavaFileSystem {
 		}
 		return files;
 	}
+	
+	
 }
