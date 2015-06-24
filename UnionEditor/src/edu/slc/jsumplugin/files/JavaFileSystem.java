@@ -11,6 +11,7 @@ import main.ConvertUnion;
 import format.*;
 import edu.slc.jsumplugin.files.*;
 
+import org.antlr.v4.runtime.misc.Pair;
 import org.eclipse.core.resources.*;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.*;
@@ -19,6 +20,7 @@ import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.text.edits.MalformedTreeException;
 
+import ast.Type;
 import ast.Ast.*;
 
 public class JavaFileSystem {
@@ -73,8 +75,8 @@ public class JavaFileSystem {
 		this.fragment = srcFolder.getPackageFragment("main");
 		if (!fragment.exists()) { srcFolder.createPackageFragment("main", true, null); }
 		
-		this.listOfUnions = findAllUnions();
 		this.previousUnions = null;
+		this.listOfUnions = findAllUnions();
 		
 		// add resource change listener
 		JavaCore.addPreProcessingResourceChangedListener(new MyResourceChangeReporter());
@@ -125,27 +127,27 @@ public class JavaFileSystem {
 		}
 	}
 	
-	//original
-	private void createInstance(Unions unions) throws JavaModelException {
-		for (Traversal t : unions.getTraversals()) {
-			String className = Character.toUpperCase(t.name.charAt(0)) + t.name.substring(1) + unions.getName();
-			FormatUnionInstance fut = new FormatUnionInstance(unions, t.name);
-			Formatter packageHeading = new Formatter();
-			packageHeading.format("package %s;\n", fragment.getElementName());
-			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_UNITHEADER + unions.getName());
-			String classContent = packageHeading.toString() + fut.toString();
-			packageHeading.close();
-			// create java file
-			ICompilationUnit newFile = fragment.getCompilationUnit(className+".java");
-			if (newFile.exists()) {
-				// replace the content of original buffer
-				System.out.printf("file %s already exists...\n", className+".java");
-				//newFile.getBuffer().replace(0, newFile.getBuffer().getLength(), classContent);
-			} else {
-				fragment.createCompilationUnit(className + ".java", classContent, false, null);
-			}
-		}
-	}
+//	//original
+//	private void createInstance(Unions unions) throws JavaModelException {
+//		for (Traversal t : unions.getTraversals()) {
+//			String className = Character.toUpperCase(t.name.charAt(0)) + t.name.substring(1) + unions.getName();
+//			FormatUnionInstance fut = new FormatUnionInstance(unions, t.name);
+//			Formatter packageHeading = new Formatter();
+//			packageHeading.format("package %s;\n", fragment.getElementName());
+//			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_UNITHEADER + unions.getName());
+//			String classContent = packageHeading.toString() + fut.toString();
+//			packageHeading.close();
+//			// create java file
+//			ICompilationUnit newFile = fragment.getCompilationUnit(className+".java");
+//			if (newFile.exists()) {
+//				// replace the content of original buffer
+//				System.out.printf("file %s already exists...\n", className+".java");
+//				//newFile.getBuffer().replace(0, newFile.getBuffer().getLength(), classContent);
+//			} else {
+//				fragment.createCompilationUnit(className + ".java", classContent, false, null);
+//			}
+//		}
+//	}
 
 
 	private void createVisitorInterpreter(Unions unions) throws JavaModelException {
@@ -210,6 +212,7 @@ public class JavaFileSystem {
 		if (iUnit.exists()) {
 			// replace the content of original buffer
 			iUnit.getBuffer().replace(0, iUnit.getBuffer().getLength(), classContent);
+			fragment.createCompilationUnit(className + ".java", classContent, true, null);
 		} else {
 			fragment.createCompilationUnit(className + ".java", classContent, false, null);
 		}
@@ -229,12 +232,83 @@ public class JavaFileSystem {
 			}
 		}
 	}
+	
+	public void compareUnions(Unions afterEdit, Unions beforeEdit) {
+		if (!afterEdit.importText.equals(beforeEdit.importText)) {
+			// replace import text portion
+		}
+		if (afterEdit.hasVisitors() != beforeEdit.hasVisitors()) {
+			// pops a message box asking user if they really want to change mode
+		}
+
+		for (String union_name : afterEdit.getNames()) {// should only be single union for now
+			for (Variant afterV : afterEdit.getVariants(union_name)) {
+				if (beforeEdit.getVariants(union_name).contains(afterV)) {
+					System.out.printf("Variant %s was present in the previous edit\n", afterV.getName());
+					// compare args
+					for (Variant beforeV : beforeEdit.getVariants(union_name)) {
+						if (beforeV.getName().equals(afterV.getName())) {
+							if (afterV.getArgs() != null) {
+								for (Pair<Type, String> arg : afterV.getArgs()) {
+									if (!beforeV.containsArg(arg)) {
+										System.out.printf("Argument %s %s was added in variant %s\n",
+														arg.a, arg.b, afterV.getName());
+									}
+								}
+							}
+						}
+					}
+				} else {
+					System.out.printf("Variant %s was added\n", afterV.getName());
+				}
+			}
+			// check if variants were removed
+			for (Variant beforeV : beforeEdit.getVariants(union_name)) {
+				if (!afterEdit.getVariants(union_name).contains(beforeV)) {
+					System.out.printf("Variant %s was removed\n", beforeV.getName());
+				}
+				// compare args
+				for (Variant afterV : afterEdit.getVariants(union_name)) {
+					if (afterV.getName().equals(beforeV.getName())) {
+						if (beforeV.getArgs() != null) {
+							for (Pair<Type, String> arg : beforeV.getArgs()) {
+								if (!afterV.containsArg(arg)) {
+									System.out.printf("Argument %s %s was removed in variant %s\n",
+													arg.a, arg.b, beforeV.getName());
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		//compareTraversals(afterEdit.traversals, beforeEdit.traversals);
+	}
+
+
+	
+	public void checkUnionFiles() throws CoreException, IOException {
+		listOfUnions = findAllUnions();
+		int i = 0;
+		for (Unions unions : listOfUnions) {
+			compareUnions(unions, previousUnions.get(i));
+			}
+			i++;
+		}
 
 	
 	/*
 	 * helper methods-------------------------------------------------------------------------------------
 	 */
-	public List<Unions> findAllUnions() throws CoreException, IOException {// bin and src both as IContainer, so repetition happens if searching inside of project
+	
+	
+	public List<Unions> findAllUnions() throws CoreException, IOException {// bin and src both as IContainer, so repetition happens if searching inside of project		
+		if (listOfUnions != null) {
+			previousUnions = new ArrayList<Unions>();
+			previousUnions.addAll(listOfUnions);
+		}
+		
 		List<Unions> unions = new ArrayList<Unions>();
 		List<IFile> files = new ArrayList<IFile>();
 		files = findFileSuffix(folder, UNION_SUFFIX, files);
@@ -247,66 +321,9 @@ public class JavaFileSystem {
 				unions.add(cu.getUnion());
 			}
 		}
-		
-		previousUnions = listOfUnions;
+
 		return unions;
 	}
-
-//	private void compareUnions(List<Unions> beforeEdit, List<Unions> afterEdit) {
-//		for (int i = 0; i < beforeEdit.size(); i++) {
-//			
-//		}
-//		
-//	}
-//
-//	public void compareUnions(Unions afterEdit, Unions beforeEdit) {
-//		if (!afterEdit.importText.equals(beforeEdit.importText)) {
-//			// replace import text portion
-//		}
-//		if (afterEdit.hasVisitors() != beforeEdit.hasVisitors()) {
-//			// pops a message box asking user if they really want to change mode
-//		}
-//		
-//		int before = beforeEdit.unions.size();
-//		int after = afterEdit.unions.size();
-//		for (String union_name : afterEdit.unions.keySet()) {
-//			if (!beforeEdit.unions.containsKey(union_name)) {
-//				before++;
-//				// add this additional union with all the corresponding variants, but what if it's only renamed?
-//				
-//			}
-//			else {
-//				compareVariants(afterEdit.unions.get(union_name), beforeEdit.unions.get(union_name));
-//				// check if there are additional variants or args
-//			}
-//		}
-//		if (before != after) {
-//			for (String union_name : beforeEdit.unions.keySet()) {
-//				if (!afterEdit.unions.containsKey(union_name)) {
-//					//remove or comment out extra variant that got deleted after edit
-//				}
-//			}
-//		}
-//		
-//		compareTraversals(afterEdit.traversals, beforeEdit.traversals);
-//	}
-//
-//	private void compareTraversals(List<Traversal> traversals, List<Traversal> beforeEditTraversals) {
-//		for (Traversal t : traversals) {
-//			if (!beforeEditTraversals.contains(t)) {
-//				
-//			}
-//		}
-//	}
-//
-//	private void compareVariants(Set<Variant> variants, Set<Variant> beforeEditVariants) {
-//		for (Variant v : variants) {
-//			if (!beforeEditVariants.contains(v)) {
-//				
-//			}
-//		}
-//		
-//	}
 
 	private List<ICompilationUnit> findAllICompilationUnits() throws CoreException {
 		List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();

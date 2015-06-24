@@ -159,7 +159,8 @@ public class JavaFileModification {
 	/*
 	 * helper method------------------------------------------------------------------------------------- 
 	 */
-
+	
+	
 	public void getAnnotations(ICompilationUnit unit) throws JavaModelException {
 		for (IType type : unit.getAllTypes()) {
 			for (IAnnotation annotation : type.getAnnotations()) {

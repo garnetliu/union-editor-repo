@@ -26,13 +26,14 @@ import edu.slc.jsumplugin.files.*;
 public class ButtonAction implements IWorkbenchWindowActionDelegate {
 	private IWorkbenchWindow window;
 	private JavaFileSystem jf;
+	private JavaFileSystem js;
 
 	/**
 	 * The constructor.
 	 * @throws IOException 
 	 */
 	public ButtonAction() throws CoreException, IOException {
-		//this.jf = new JavaFileSystem();
+		js = new JavaFileSystem("TestJavaProject");
 	}
 
 	/**
@@ -42,14 +43,11 @@ public class ButtonAction implements IWorkbenchWindowActionDelegate {
 	 * @see IWorkbenchWindowActionDelegate#run
 	 */
 	public void run(IAction action) {
-		MessageDialog.openInformation(window.getShell(), "Set up",
-				"check first block");
+		MessageDialog.openInformation(window.getShell(), "Test",
+				"Test button");
 
 			try {
-				JavaFileSystem js = new JavaFileSystem("TestJavaProject");
-				JavaFileModification jm = new JavaFileModification(js.fragment.getCompilationUnits()[1]);
-				//jm.checkConditionExpression();
-				jm.getAnnotations(js.fragment.getCompilationUnits()[0]);
+				js.checkUnionFiles();
 			} catch (CoreException | IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
