@@ -20,8 +20,9 @@ import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.text.edits.MalformedTreeException;
 
-import ast.Type;
 import ast.Ast.*;
+import ast.CompareAst;
+import ast.CompareAst.CompareUnions;
 
 public class JavaFileSystem {
 
@@ -111,7 +112,8 @@ public class JavaFileSystem {
 				// replace the content of original buffer
 				System.out.printf("file %s already exists...check\n", className + ".java");
 				try {
-					JavaFileModification.modifyInstance(newFile, t, unions_beforeEdit, unions);
+					CompareUnions compareUnions = new CompareUnions(unions, unions_beforeEdit);
+					JavaFileModification.modifyInstance(newFile, t, compareUnions);
 				} catch (IllegalArgumentException | MalformedTreeException | BadLocationException e) {
 					e.printStackTrace();
 				}
@@ -204,9 +206,7 @@ public class JavaFileSystem {
 		packageHeading.format("package %s;\n", fragment.getElementName());
 		String classContent = packageHeading.toString() + fu.toString();
 		packageHeading.close();
-		// InputStream newContent = new ByteArrayInputStream(fu.toString().getBytes());
-		// MultiTextEdit edit = new MultiTextEdit(); edit.addChild(new InsertEdit(0, fu.toString()));
-
+		
 		// create java file
 		ICompilationUnit iUnit = fragment.getCompilationUnit(className+".java");
 		if (iUnit.exists()) {
@@ -232,59 +232,6 @@ public class JavaFileSystem {
 			}
 		}
 	}
-	
-	public void compareUnions(Unions afterEdit, Unions beforeEdit) {
-		if (!afterEdit.importText.equals(beforeEdit.importText)) {
-			// replace import text portion
-		}
-		if (afterEdit.hasVisitors() != beforeEdit.hasVisitors()) {
-			// pops a message box asking user if they really want to change mode
-		}
-
-		for (String union_name : afterEdit.getNames()) {// should only be single union for now
-			for (Variant afterV : afterEdit.getVariants(union_name)) {
-				if (beforeEdit.getVariants(union_name).contains(afterV)) {
-					System.out.printf("Variant %s was present in the previous edit\n", afterV.getName());
-					// compare args
-					for (Variant beforeV : beforeEdit.getVariants(union_name)) {
-						if (beforeV.getName().equals(afterV.getName())) {
-							if (afterV.getArgs() != null) {
-								for (Pair<Type, String> arg : afterV.getArgs()) {
-									if (!beforeV.containsArg(arg)) {
-										System.out.printf("Argument %s %s was added in variant %s\n",
-														arg.a, arg.b, afterV.getName());
-									}
-								}
-							}
-						}
-					}
-				} else {
-					System.out.printf("Variant %s was added\n", afterV.getName());
-				}
-			}
-			// check if variants were removed
-			for (Variant beforeV : beforeEdit.getVariants(union_name)) {
-				if (!afterEdit.getVariants(union_name).contains(beforeV)) {
-					System.out.printf("Variant %s was removed\n", beforeV.getName());
-				}
-				// compare args
-				for (Variant afterV : afterEdit.getVariants(union_name)) {
-					if (afterV.getName().equals(beforeV.getName())) {
-						if (beforeV.getArgs() != null) {
-							for (Pair<Type, String> arg : beforeV.getArgs()) {
-								if (!afterV.containsArg(arg)) {
-									System.out.printf("Argument %s %s was removed in variant %s\n",
-													arg.a, arg.b, beforeV.getName());
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		//compareTraversals(afterEdit.traversals, beforeEdit.traversals);
-	}
 
 
 	
@@ -292,7 +239,7 @@ public class JavaFileSystem {
 		listOfUnions = findAllUnions();
 		int i = 0;
 		for (Unions unions : listOfUnions) {
-			compareUnions(unions, previousUnions.get(i));
+			CompareUnions compareUnions = new CompareUnions(unions, previousUnions.get(i));
 			}
 			i++;
 		}

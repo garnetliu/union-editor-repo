@@ -7,6 +7,7 @@ import java.util.List;
 
 import javax.swing.text.BadLocationException;
 
+import org.antlr.v4.runtime.misc.Pair;
 import org.eclipse.core.resources.*;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -18,6 +19,8 @@ import org.eclipse.jface.text.Document;
 import org.eclipse.text.edits.MalformedTreeException;
 import org.eclipse.text.edits.TextEdit;
 
+import ast.Ast.Traversal;
+import ast.CompareAst.CompareUnions;
 import ast.Type.*;
 import ast.Ast.*;
 
@@ -72,103 +75,168 @@ public class JavaFileModification {
 		}
 	}
 	
-	// compare two unions and modify the instance file
-	public static void modifyInstance(ICompilationUnit iUnit, Traversal t, Unions beforeEdit, Unions afterEdit) 
-			throws JavaModelException, IllegalArgumentException, MalformedTreeException, org.eclipse.jface.text.BadLocationException {
-		// loop through all the argument types in the traversal
-		for (ast.Type union_type : t.arg_types) {
-			// pick the argument types that are union types
-			if (afterEdit.getNames().contains(union_type.toString())) {
-				// found additional union types
-				if (!beforeEdit.getNames().contains(union_type.toString())) { // add this additional union with all the corresponding variants, but what if it's only renamed?	
-				} else {
-					int beforeVariantSize = beforeEdit.getNames().size();
-					int afterVariantSize = afterEdit.getNames().size();
-					// check if there are additional variants
-					for (Variant v : afterEdit.unions.get(union_type.toString())) {
-						// found additional variant
-						if (!beforeEdit.unions.get(union_type.toString()).contains(v)) {
-							// parse
-							CompilationUnit astRoot = parse(iUnit);
-							// create a ASTRewrite
-							AST ast = astRoot.getAST();
-							ASTRewrite rewriter = ASTRewrite.create(ast);
-							// for getting insertion position
-							TypeDeclaration typeDecl = (TypeDeclaration) astRoot.types().get(0);
-							MethodDeclaration methodDecl = typeDecl.getMethods()[0];
-							Block block = methodDecl.getBody();// add to this block
-							// create new conditionalExp
-							Name leftExp = ast.newName(t.getParameterName(0));
-							Type rightType = ast.newSimpleType(ast.newName(v.getName()));
-							InstanceofExpression conditionExp = ast.newInstanceofExpression();
-							conditionExp.setLeftOperand(leftExp);
-							conditionExp.setRightOperand(rightType);
-							// create new if statement
-							IfStatement newIfStatement = ast.newIfStatement();
-							newIfStatement.setExpression(conditionExp);
-							//set then statement
-							Block then = ast.newBlock();
-							if (union_type.toString().equals("void")) {} 
-							else if (t.return_type instanceof NumericType) {
-								ReturnStatement returnStmt = ast.newReturnStatement();
-								returnStmt.setExpression(ast.newNumberLiteral("0"));
-								then.statements().add(returnStmt);
-								newIfStatement.setThenStatement(then);
-							} else {
-								ReturnStatement returnStmt = ast.newReturnStatement();
-								returnStmt.setExpression(ast.newNullLiteral());
-								then.statements().add(returnStmt);
-								newIfStatement.setThenStatement(then);
-							}
-							ListRewrite stubComment = rewriter.getListRewrite(then, Block.STATEMENTS_PROPERTY);
-							Statement placeHolder = (Statement) rewriter.createStringPlaceholder("// TODO Auto-generated case match pattern", ASTNode.BLOCK);
-							stubComment.insertFirst(placeHolder, null);
-							//set else
-							IfStatement elseIfs = (IfStatement) ASTNode.copySubtree(ast, (ASTNode) block.statements().get(0));
-							newIfStatement.setElseStatement(elseIfs);
-							// create ListRewrite
-							ListRewrite listRewrite = rewriter.getListRewrite(block, Block.STATEMENTS_PROPERTY);
-							// listRewrite.insertFirst(newIfStatement, null);
-							listRewrite.replace((ASTNode) block.statements().get(0), newIfStatement, null);
 
-							TextEdit edits = rewriter.rewriteAST();
-							// apply the text edits to the compilation unit
-							Document document = new Document(iUnit.getSource());
-							edits.apply(document);
-							// this is the code for adding statements
-							iUnit.getBuffer().setContents(document.get());
-							
-							// increament afterVariantSize
-							afterVariantSize++;
-						}
-					}
-					// found & remove redundant existing variant
-					if (beforeVariantSize != afterVariantSize) {
-						for (Variant v : beforeEdit.unions.get(union_type.toString())) {
-							// found additional variant
-							if (!afterEdit.unions.get(union_type.toString()).contains(v)) {
-								
-							}
-						}
-					}
-				}
-			}
+	public static void modifyInstance(ICompilationUnit iUnit, Traversal t, CompareUnions compareUnions) throws 
+	JavaModelException, IllegalArgumentException, MalformedTreeException, org.eclipse.jface.text.BadLocationException {
+		//insert
+		for (Variant v : compareUnions.getTraversalInstaces(t, 0)) {
+			// parse
+			CompilationUnit astRoot = parse(iUnit);
+			TextEdit edits = insertInstance(astRoot, t, v);
+			// apply the text edits to the compilation unit
+			Document document = new Document(iUnit.getSource());
+			edits.apply(document);
+			// this is the code for adding statements
+			iUnit.getBuffer().setContents(document.get());
 		}
+		
+		
+		
 	}
+	
+//	// compare two unions and modify the instance file
+//	public static void modifyInstance(ICompilationUnit iUnit, Traversal t,
+//			Unions beforeEdit, Unions afterEdit) throws JavaModelException, IllegalArgumentException, MalformedTreeException,
+//			org.eclipse.jface.text.BadLocationException {
+//		// loop through all the argument types in the traversal
+//		for (ast.Type union_type : t.arg_types) {
+//			// pick the argument types that are union types
+//			if (afterEdit.getNames().contains(union_type.toString())) {
+//				// found additional union types
+//				if (!beforeEdit.getNames().contains(union_type.toString())) { // add this additional union with all the corresponding variants, but what if it's only renamed?	
+//				} else {
+//					int beforeVariantSize = beforeEdit.getNames().size();
+//					int afterVariantSize = afterEdit.getNames().size();
+//					// check if there are additional variants
+//					for (Variant v : afterEdit.unions.get(union_type.toString())) {
+//						// found additional variant
+//						if (!beforeEdit.unions.get(union_type.toString()).contains(v)) {
+//							// parse
+//							CompilationUnit astRoot = parse(iUnit);
+//							// create a ASTRewrite
+//							AST ast = astRoot.getAST();
+//							ASTRewrite rewriter = ASTRewrite.create(ast);
+//							// for getting insertion position
+//							TypeDeclaration typeDecl = (TypeDeclaration) astRoot.types().get(0);
+//							MethodDeclaration methodDecl = typeDecl.getMethods()[0];
+//							Block block = methodDecl.getBody();// add to this block
+//							// create new conditionalExp
+//							Name leftExp = ast.newName(t.getParameterName(0));
+//							Type rightType = ast.newSimpleType(ast.newName(v.getName()));
+//							InstanceofExpression conditionExp = ast.newInstanceofExpression();
+//							conditionExp.setLeftOperand(leftExp);
+//							conditionExp.setRightOperand(rightType);
+//							// create new if statement
+//							IfStatement newIfStatement = ast.newIfStatement();
+//							newIfStatement.setExpression(conditionExp);
+//							//set then statement
+//							Block then = ast.newBlock();
+//							if (union_type.toString().equals("void")) {} 
+//							else if (t.return_type instanceof NumericType) {
+//								ReturnStatement returnStmt = ast.newReturnStatement();
+//								returnStmt.setExpression(ast.newNumberLiteral("0"));
+//								then.statements().add(returnStmt);
+//								newIfStatement.setThenStatement(then);
+//							} else {
+//								ReturnStatement returnStmt = ast.newReturnStatement();
+//								returnStmt.setExpression(ast.newNullLiteral());
+//								then.statements().add(returnStmt);
+//								newIfStatement.setThenStatement(then);
+//							}
+//							ListRewrite stubComment = rewriter.getListRewrite(then, Block.STATEMENTS_PROPERTY);
+//							Statement placeHolder = (Statement) rewriter.createStringPlaceholder("// TODO Auto-generated case match pattern", ASTNode.BLOCK);
+//							stubComment.insertFirst(placeHolder, null);
+//							//set else
+//							IfStatement elseIfs = (IfStatement) ASTNode.copySubtree(ast, (ASTNode) block.statements().get(0));
+//							newIfStatement.setElseStatement(elseIfs);
+//							// create ListRewrite
+//							ListRewrite listRewrite = rewriter.getListRewrite(block, Block.STATEMENTS_PROPERTY);
+//							// listRewrite.insertFirst(newIfStatement, null);
+//							listRewrite.replace((ASTNode) block.statements().get(0), newIfStatement, null);
+//
+//							TextEdit edits = rewriter.rewriteAST();
+//							// apply the text edits to the compilation unit
+//							Document document = new Document(iUnit.getSource());
+//							edits.apply(document);
+//							// this is the code for adding statements
+//							iUnit.getBuffer().setContents(document.get());
+//							
+//							// increament afterVariantSize
+//							afterVariantSize++;
+//						}
+//					}
+//					// found & remove redundant existing variant
+//					if (beforeVariantSize != afterVariantSize) {
+//						for (Variant v : beforeEdit.unions.get(union_type.toString())) {
+//							// found additional variant
+//							if (!afterEdit.unions.get(union_type.toString()).contains(v)) {
+//								
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
+	
 	
 	/*
 	 * helper method------------------------------------------------------------------------------------- 
 	 */
 	
+
 	
-	public void getAnnotations(ICompilationUnit unit) throws JavaModelException {
-		for (IType type : unit.getAllTypes()) {
-			for (IAnnotation annotation : type.getAnnotations()) {
-				System.out.println(type.getElementName()+ " is a " +annotation.getElementName());
-				
-			}
+	private static TextEdit insertInstance(CompilationUnit astRoot, Traversal t, Variant v) throws MalformedTreeException, org.eclipse.jface.text.BadLocationException, JavaModelException, IllegalArgumentException {
+		// create a ASTRewrite
+		AST ast = astRoot.getAST();
+		ASTRewrite rewriter = ASTRewrite.create(ast);
+		// for getting insertion position
+		TypeDeclaration typeDecl = (TypeDeclaration) astRoot.types().get(0);
+		MethodDeclaration methodDecl = typeDecl.getMethods()[0];
+		Block block = methodDecl.getBody();// add to this block
+		// create new conditionalExp
+		Name leftExp = ast.newName(t.getParameterName(0));
+		Type rightType = ast.newSimpleType(ast.newName(v.getName()));
+		InstanceofExpression conditionExp = ast.newInstanceofExpression();
+		conditionExp.setLeftOperand(leftExp);
+		conditionExp.setRightOperand(rightType);
+		// create new if statement
+		IfStatement newIfStatement = ast.newIfStatement();
+		newIfStatement.setExpression(conditionExp);
+		//set then statement
+		Block then = ast.newBlock();
+		if (t.return_type.toString().equals("void")) {} 
+		else if (t.return_type instanceof NumericType) {
+			ReturnStatement returnStmt = ast.newReturnStatement();
+			returnStmt.setExpression(ast.newNumberLiteral("0"));
+			then.statements().add(returnStmt);
+			newIfStatement.setThenStatement(then);
+		} else if (t.return_type instanceof BooleanType) {
+			ReturnStatement returnStmt = ast.newReturnStatement();
+			returnStmt.setExpression(ast.newBooleanLiteral(false));
+			then.statements().add(returnStmt);
+			newIfStatement.setThenStatement(then);
+		} else {
+			ReturnStatement returnStmt = ast.newReturnStatement();
+			returnStmt.setExpression(ast.newNullLiteral());
+			then.statements().add(returnStmt);
+			newIfStatement.setThenStatement(then);
 		}
+		ListRewrite stubComment = rewriter.getListRewrite(then, Block.STATEMENTS_PROPERTY);
+		Statement placeHolder = (Statement) rewriter.createStringPlaceholder("// TODO Auto-generated case match pattern", ASTNode.BLOCK);
+		stubComment.insertFirst(placeHolder, null);
+		//set else
+		IfStatement elseIfs = (IfStatement) ASTNode.copySubtree(ast, (ASTNode) block.statements().get(0));
+		newIfStatement.setElseStatement(elseIfs);
+		// create ListRewrite
+		ListRewrite listRewrite = rewriter.getListRewrite(block, Block.STATEMENTS_PROPERTY);
+		// listRewrite.insertFirst(newIfStatement, null);
+		listRewrite.replace((ASTNode) block.statements().get(0), newIfStatement, null);
+
+		TextEdit edits = rewriter.rewriteAST();
+		return edits;
 	}
+	
 	
 	private static MethodDeclaration getFirstMethod(ICompilationUnit iUnit) throws JavaModelException {
 		// parse compilation unit
@@ -186,5 +254,6 @@ public class JavaFileModification {
 		parser.setResolveBindings(true);
 		return (CompilationUnit) parser.createAST(null);
 	}
+
 
 }
