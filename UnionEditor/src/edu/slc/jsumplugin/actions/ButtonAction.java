@@ -25,7 +25,6 @@ import edu.slc.jsumplugin.files.*;
  */
 public class ButtonAction implements IWorkbenchWindowActionDelegate {
 	private IWorkbenchWindow window;
-	private JavaFileSystem jf;
 	private JavaFileSystem js;
 
 	/**
