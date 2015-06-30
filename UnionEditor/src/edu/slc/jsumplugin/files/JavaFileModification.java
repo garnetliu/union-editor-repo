@@ -129,18 +129,18 @@ public class JavaFileModification {
 									first = false;
 									
 								} else {
+									System.out.println(newIfStatement);
 									Statement rest = (Statement) is.getElseStatement().copySubtree(ast, is.getElseStatement());
 									if (newElses == null) {
 										newIfStatement.setElseStatement(rest);
 									} else {
-										((IfStatement) newElses).setElseStatement(rest);
+										getEmptyElse((IfStatement) newElses).setElseStatement(rest);
 										newIfStatement.setElseStatement((Statement) newElses.copySubtree(ast, newElses));
 									}
 									
 								}
 								// create ListRewrite
 								ListRewrite listRewrite = rewriter.getListRewrite(block, Block.STATEMENTS_PROPERTY);
-								// listRewrite.insertFirst(newIfStatement, null);
 								listRewrite.replace((ASTNode) block.statements().get(0), newIfStatement, null);
 								TextEdit edits = rewriter.rewriteAST();
 								return edits;
@@ -156,7 +156,7 @@ public class JavaFileModification {
 									if (newElses == null) {
 										newElses = keepVariant;
 									} else {
-										((IfStatement) newElses).setElseStatement(keepVariant);
+										getEmptyElse((IfStatement) newElses).setElseStatement(keepVariant);
 									}
 									newIfStatement.setElseStatement((Statement) newElses.copySubtree(ast, newElses));
 								}
@@ -168,6 +168,16 @@ public class JavaFileModification {
 			}
 		}
 		return null;
+	}
+
+
+
+	private static IfStatement getEmptyElse(IfStatement newElses) {
+		if (newElses.getElseStatement() == null) {
+			return newElses;
+		} else {
+			return getEmptyElse((IfStatement) newElses.getElseStatement());
+		}
 	}
 
 	private static TextEdit insertInstance(CompilationUnit astRoot, Traversal t, Variant v, Pair<ast.Type, String> traversal_union_type) 
