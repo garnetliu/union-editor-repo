@@ -245,8 +245,22 @@ public class JavaFileModification {
 		// create new if statement
 		IfStatement newIfStatement = ast.newIfStatement();
 		newIfStatement.setExpression(conditionExp);
+		
 		//set then statement
 		Block then = ast.newBlock();
+		Assignment assign = ast.newAssignment();
+		VariableDeclarationFragment fragment = ast.newVariableDeclarationFragment();
+		fragment.setName(ast.newSimpleName(v.getName().toLowerCase()));
+		VariableDeclarationExpression left = ast.newVariableDeclarationExpression(fragment);
+		left.setType((Type) ASTNode.copySubtree(ast, rightType));
+		assign.setLeftHandSide(left);
+		assign.setOperator(Assignment.Operator.ASSIGN);
+		CastExpression right = ast.newCastExpression();
+		right.setType((Type) ASTNode.copySubtree(ast,rightType));
+		right.setExpression((Expression) ASTNode.copySubtree(ast, leftExp));
+		assign.setRightHandSide(right);
+		then.statements().add(ast.newExpressionStatement(assign));
+		
 		if (t.getReturn_type().toString().equals("void")) {} 
 		else if (t.getReturn_type() instanceof NumericType) {
 			ReturnStatement returnStmt = ast.newReturnStatement();
