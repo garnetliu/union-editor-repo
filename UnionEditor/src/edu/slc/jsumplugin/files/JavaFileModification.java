@@ -198,11 +198,6 @@ public class JavaFileModification {
 		MethodDeclaration methodDecl = typeDecl.getMethods()[0];
 		Block block = methodDecl.getBody();// add to this block
 		
-		// set up new if statement
-		IfStatement newIfStatement = ast.newIfStatement();
-		Statement newElses = null;
-		boolean first = true;
-		
 		// loop through all statements in this block
 		for (Object o : block.statements()) {
 			Statement s = (Statement) o;
@@ -213,55 +208,16 @@ public class JavaFileModification {
 					if (instanceOfExp.getLeftOperand() instanceof Name) {
 						Name leftExp = (Name) instanceOfExp.getLeftOperand();
 						if (leftExp.resolveBinding() instanceof IVariableBinding) {
-							
 							// check if cases match traversal and the variant
 							String left_name = leftExp.getFullyQualifiedName();
 							String right_TypeName = instanceOfExp.getRightOperand().toString();
 							if (left_name.equals(traversal_union_type.b) && right_TypeName.equals(v.getName())) {
-								if (first) {
-									is.getElseStatement();
-									Statement rest = (Statement) ASTNode.copySubtree(ast, is.getElseStatement());
-									if (rest instanceof Block) {
-										newIfStatement = (IfStatement) ((Block) rest).statements().get(0);
-									} else {
-										newIfStatement = (IfStatement) rest;
-									}
-									first = false;
-									
-								} else {
-									System.out.println(newIfStatement);
-									is.getElseStatement();
-									Statement rest = (Statement) ASTNode.copySubtree(ast, is.getElseStatement());
-									if (newElses == null) {
-										newIfStatement.setElseStatement(rest);
-									} else {
-										getEmptyElse((IfStatement) newElses).setElseStatement(rest);
-										newIfStatement.setElseStatement((Statement) ASTNode.copySubtree(ast, newElses));
-									}
-									
-								}
+								// replace the current if statement with its else statements, but only the previous comments will remain
+								rewriter.replace(is, is.getElseStatement(), null);
 								// create ListRewrite
-								ListRewrite listRewrite = rewriter.getListRewrite(block, Block.STATEMENTS_PROPERTY);
-								listRewrite.replace((ASTNode) block.statements().get(0), newIfStatement, null);
 								TextEdit edits = rewriter.rewriteAST();
 								return edits;
-							} else {
-								if (first) {
-									newIfStatement.setExpression((Expression) ASTNode.copySubtree(ast, instanceOfExp));
-									newIfStatement.setThenStatement((Statement) ASTNode.copySubtree(ast, is.getThenStatement()));
-									first = false;
-								} else {
-									IfStatement keepVariant = ast.newIfStatement();
-									keepVariant.setExpression((Expression) ASTNode.copySubtree(ast, instanceOfExp));
-									keepVariant.setThenStatement((Statement) ASTNode.copySubtree(ast, is.getThenStatement()));
-									if (newElses == null) {
-										newElses = keepVariant;
-									} else {
-										getEmptyElse((IfStatement) newElses).setElseStatement(keepVariant);
-									}
-									newIfStatement.setElseStatement((Statement) ASTNode.copySubtree(ast, newElses));
 								}
-							}
 						}
 					}
 				}
@@ -269,14 +225,6 @@ public class JavaFileModification {
 			}
 		}
 		return null;
-	}
-
-	private static IfStatement getEmptyElse(IfStatement newElses) {
-		if (newElses.getElseStatement() == null) {
-			return newElses;
-		} else {
-			return getEmptyElse((IfStatement) newElses.getElseStatement());
-		}
 	}
 
 	private static TextEdit insertInstance(CompilationUnit astRoot, Traversal t, Variant v, Pair<ast.Type, String> traversal_union_type) 
@@ -348,7 +296,7 @@ public class JavaFileModification {
 		parser.setSource(unit);
 		parser.setResolveBindings(true);
 		CompilationUnit cu = (CompilationUnit) parser.createAST(null);
-//		// visit comments
+		// visit comments
 //		for (Comment comment : (List<Comment>) cu.getCommentList()) {
 //		    comment.accept(new CommentVisitor(cu, unit.getBuffer().getContents()));
 //		}
