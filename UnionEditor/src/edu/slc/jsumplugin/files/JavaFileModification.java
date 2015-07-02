@@ -316,27 +316,81 @@ public class JavaFileModification {
 			then.statements().add(returnStmt);
 			newIfStatement.setThenStatement(then);
 		}
+		// add stub comment
 		ListRewrite stubComment = rewriter.getListRewrite(then, Block.STATEMENTS_PROPERTY);
 		Statement placeHolder = (Statement) rewriter.createStringPlaceholder("// TODO Auto-generated case match pattern", ASTNode.BLOCK);
 		stubComment.insertFirst(placeHolder, null);
-		//set else
-		Statement elseIfs = (Statement) ASTNode.copySubtree(ast, (ASTNode) block.statements().get(0));
-		newIfStatement.setElseStatement(elseIfs);
-		// create ListRewrite
-		ListRewrite listRewrite = rewriter.getListRewrite(block, Block.STATEMENTS_PROPERTY);
-		// listRewrite.insertFirst(newIfStatement, null);
-		listRewrite.replace((ASTNode) block.statements().get(0), newIfStatement, null);
+	
+		// loop through the if else instances and insert at last
+		for (Object o : block.statements()) {
+			Statement s = (Statement) o;
+			while (s instanceof IfStatement) {
+				IfStatement is = (IfStatement) s;
+				if (is.getElseStatement() instanceof Block) {
+					// reach the last statement
+					Block finalElse = (Block) ASTNode.copySubtree(ast, is.getElseStatement());
+					newIfStatement.setElseStatement(finalElse);
+					rewriter.replace(is.getElseStatement(), newIfStatement, null);
+					break;
+				}
+				s = is.getElseStatement();
+			}
+			
+		}
+		
 		TextEdit edits = rewriter.rewriteAST();
 		return edits;
 	}
 	
-	private static CompilationUnit parse(ICompilationUnit unit) {
+	private static CompilationUnit parse(ICompilationUnit unit) throws JavaModelException {
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
 		parser.setKind(ASTParser.K_COMPILATION_UNIT);
 		parser.setSource(unit);
 		parser.setResolveBindings(true);
-		return (CompilationUnit) parser.createAST(null);
+		CompilationUnit cu = (CompilationUnit) parser.createAST(null);
+//		// visit comments
+//		for (Comment comment : (List<Comment>) cu.getCommentList()) {
+//		    comment.accept(new CommentVisitor(cu, unit.getBuffer().getContents()));
+//		}
+		return cu;
 	}
 
+}
+
+// comment visitor
+class CommentVisitor extends ASTVisitor {
+	CompilationUnit cu;
+	String source;
+
+	public CommentVisitor(CompilationUnit cu, String source) {
+		super();
+		this.cu = cu;
+		this.source = source;
+	}
+
+	public boolean visit(LineComment node) {
+		int start = node.getStartPosition();
+		int end = start + node.getLength();
+		node.getAlternateRoot();
+		String comment = source.substring(start, end);
+		System.out.println(comment);
+		return true;
+	}
+
+	public boolean visit(BlockComment node) {
+		int start = node.getStartPosition();
+		int end = start + node.getLength();
+		String comment = source.substring(start, end);
+		System.out.println(comment);
+		return true;
+	}
+	
+	public boolean visit(Javadoc node) {
+		int start = node.getStartPosition();
+		int end = start + node.getLength();
+		String comment = source.substring(start, end);
+		System.out.println(comment);
+		return true;
+	}
 
 }

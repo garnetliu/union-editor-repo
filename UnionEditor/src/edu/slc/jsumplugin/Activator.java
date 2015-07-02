@@ -33,9 +33,6 @@ public class Activator extends AbstractUIPlugin {
 	 * The constructor
 	 */
 	public Activator() {
-		MessageBox box = new MessageBox(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell());
-		box.setMessage("associating union file to java file...");
-		box.open();
 		// initiate the JavaFileSystem
 		try {
 			js = new JavaFileSystem("TestJavaProject");
