@@ -41,19 +41,22 @@ public class JavaFileModification {
 		// delete
 		for (Variant v : compareUnions.getTraversalInstaces(t, 1)) {
 			CompilationUnit astRoot = parse(iUnit);
+			List<CommentLoc> comments = getComments(iUnit);
 			// get text edits
 			Pair<ast.Type, String> traversal_union_type = compareUnions.getUnionTypeInTraversal(t);
-			TextEdit edits = removeInstance(astRoot, t, v, traversal_union_type);
-			// apply the text edits to the compilation unit
-			Document document = new Document(iUnit.getSource());
-			edits.apply(document);
-			// adding statement to the buffer iUnit will be created in the addInstance in the JavaSystem
-			iUnit.getBuffer().setContents(document.get());
+//			TextEdit edits = removeInstance(astRoot, t, v, traversal_union_type, comments);
+//			// apply the text edits to the compilation unit
+//			Document document = new Document(iUnit.getSource());
+//			edits.apply(document);
+//			// adding statement to the buffer iUnit will be created in the addInstance in the JavaSystem
+//			iUnit.getBuffer().setContents(document.get());
+			removeInstance(iUnit, astRoot, t, v, traversal_union_type);
 		}
 
 	}
-	
-	public static void modifyVisitorInterpreter(String union_name, ICompilationUnit iUnit, CompareUnions compareUnions) throws JavaModelException, MalformedTreeException, BadLocationException {
+
+	public static void modifyVisitorInterpreter(String union_name, ICompilationUnit iUnit, CompareUnions compareUnions) 
+			throws JavaModelException, MalformedTreeException, BadLocationException {
 		// insert
 		for (Variant v : compareUnions.compareVariants_Unions.get(union_name).getInsertions()) {
 			CompilationUnit astRoot = parse(iUnit);
@@ -113,7 +116,8 @@ public class JavaFileModification {
 	 * helper method------------------------------------------------------------------------------------- 
 	 */
 	
-	private static TextEdit removeVisitMethod(CompilationUnit astRoot, Variant v) throws JavaModelException, IllegalArgumentException {
+	private static TextEdit removeVisitMethod(CompilationUnit astRoot, Variant v) 
+			throws JavaModelException, IllegalArgumentException {
 		// create a ASTRewrite
 		AST ast = astRoot.getAST();
 		ASTRewrite rewriter = ASTRewrite.create(ast);
@@ -188,8 +192,63 @@ public class JavaFileModification {
 		TextEdit edits = rewriter.rewriteAST();
 		return edits;
 	}
+	
+//	private static TextEdit removeInstance(CompilationUnit astRoot, Traversal t, Variant v, 
+//			Pair<ast.Type, String> traversal_union_type, List<CommentLoc> comments) throws JavaModelException, IllegalArgumentException {
+//		// create a ASTRewrite
+//		AST ast = astRoot.getAST();
+//		ASTRewrite rewriter = ASTRewrite.create(ast);
+//		// for getting insertion position (first method)
+//		TypeDeclaration typeDecl = (TypeDeclaration) astRoot.types().get(0);
+//		MethodDeclaration methodDecl = typeDecl.getMethods()[0];
+//		Block block = methodDecl.getBody();// add to this block
+//		
+//		// loop through all statements in this block
+//		for (Object o : block.statements()) {
+//			Statement s = (Statement) o;
+//			while (s instanceof IfStatement) {
+//				IfStatement is = (IfStatement) s;
+//				if (is.getExpression() instanceof InstanceofExpression) {
+//					InstanceofExpression instanceOfExp = (InstanceofExpression) is.getExpression();		
+//					if (instanceOfExp.getLeftOperand() instanceof Name) {
+//						Name leftExp = (Name) instanceOfExp.getLeftOperand();
+//						if (leftExp.resolveBinding() instanceof IVariableBinding) {
+//							// check if cases match traversal and the variant
+//							String left_name = leftExp.getFullyQualifiedName();
+//							String right_TypeName = instanceOfExp.getRightOperand().toString();
+//							if (left_name.equals(traversal_union_type.b) && right_TypeName.equals(v.getName())) {
+//								// replace the current if statement with its else statements, but only the previous comments will remain
+//								Statement isElse = is.getElseStatement();
+//								for (CommentLoc cl : comments) {
+//									if (cl.start > isElse.getStartPosition() && cl.end < (isElse.getStartPosition() + isElse.getLength())) {
+//										System.out.println(cl.content);
+//										// add comment
+//										if ((isElse instanceof IfStatement)) {
+////											ListRewrite addComment = rewriter.getListRewrite(isElse, Block.STATEMENTS_PROPERTY);
+////											Statement placeHolder = (Statement) rewriter.createStringPlaceholder(cl.content, ASTNode.BLOCK);
+////											addComment.insertAt(isElse, cl.start, null);
+//										}
+//									}
+//								}
+//								
+//								
+//								rewriter.replace(is, isElse, null);
+//								// create ListRewrite
+//								TextEdit edits = rewriter.rewriteAST();
+//								return edits;
+//							}
+//						}
+//					}
+//				}
+//				s = is.getElseStatement();
+//			}
+//		}
+//		return null;
+//	}
+	
+	private static void removeInstance(ICompilationUnit iUnit, CompilationUnit astRoot, Traversal t, Variant v,
+			Pair<ast.Type, String> traversal_union_type) throws JavaModelException, IllegalArgumentException {
 
-	private static TextEdit removeInstance(CompilationUnit astRoot, Traversal t, Variant v, Pair<ast.Type, String> traversal_union_type) throws JavaModelException, IllegalArgumentException {
 		// create a ASTRewrite
 		AST ast = astRoot.getAST();
 		ASTRewrite rewriter = ASTRewrite.create(ast);
@@ -201,6 +260,7 @@ public class JavaFileModification {
 		// loop through all statements in this block
 		for (Object o : block.statements()) {
 			Statement s = (Statement) o;
+
 			while (s instanceof IfStatement) {
 				IfStatement is = (IfStatement) s;
 				if (is.getExpression() instanceof InstanceofExpression) {
@@ -212,19 +272,29 @@ public class JavaFileModification {
 							String left_name = leftExp.getFullyQualifiedName();
 							String right_TypeName = instanceOfExp.getRightOperand().toString();
 							if (left_name.equals(traversal_union_type.b) && right_TypeName.equals(v.getName())) {
-								// replace the current if statement with its else statements, but only the previous comments will remain
-								rewriter.replace(is, is.getElseStatement(), null);
-								// create ListRewrite
-								TextEdit edits = rewriter.rewriteAST();
-								return edits;
-								}
+								// replace the current if statement with its else statements (through the ICompilation unit)
+								Statement isElse = is.getElseStatement();
+								int isStart = is.getStartPosition();
+								int elseStart = isElse.getStartPosition();
+								int elseEnd = isElse.getStartPosition() + isElse.getLength();
+								String contents = iUnit.getBuffer().getContents();
+								String elseContents = contents.substring(elseStart, elseEnd);
+								String newContents = contents.substring(0, isStart) + elseContents + contents.substring(elseEnd, contents.length());
+								//System.out.println(newContents);
+								iUnit.getBuffer().setContents(newContents);
+								
+//								astRoot = parse(iUnit);
+//								typeDecl = (TypeDeclaration) astRoot.types().get(0);
+//								methodDecl = typeDecl.getMethods()[0];
+//								block = methodDecl.getBody();// add to this block
+								
+							}
 						}
 					}
 				}
 				s = is.getElseStatement();
 			}
 		}
-		return null;
 	}
 
 	private static TextEdit insertInstance(CompilationUnit astRoot, Traversal t, Variant v, Pair<ast.Type, String> traversal_union_type) 
@@ -311,23 +381,39 @@ public class JavaFileModification {
 		parser.setResolveBindings(true);
 		CompilationUnit cu = (CompilationUnit) parser.createAST(null);
 		// visit comments
-//		for (Comment comment : (List<Comment>) cu.getCommentList()) {
-//		    comment.accept(new CommentVisitor(cu, unit.getBuffer().getContents()));
-//		}
+		List<CommentLoc> comments = new ArrayList<CommentLoc>();
+		for (Comment comment : (List<Comment>) cu.getCommentList()) {
+		    comment.accept(new CommentVisitor(cu, unit.getBuffer().getContents(), comments));
+		}
 		return cu;
 	}
-
+	
+	private static List<CommentLoc> getComments(ICompilationUnit unit) throws JavaModelException {
+		ASTParser parser = ASTParser.newParser(AST.JLS8);
+		parser.setKind(ASTParser.K_COMPILATION_UNIT);
+		parser.setSource(unit);
+		parser.setResolveBindings(true);
+		CompilationUnit cu = (CompilationUnit) parser.createAST(null);
+		// visit comments
+		List<CommentLoc> comments = new ArrayList<CommentLoc>();
+		for (Comment comment : (List<Comment>) cu.getCommentList()) {
+		    comment.accept(new CommentVisitor(cu, unit.getBuffer().getContents(), comments));
+		}
+		return comments;
+	}
 }
 
 // comment visitor
 class CommentVisitor extends ASTVisitor {
 	CompilationUnit cu;
 	String source;
+	private List<CommentLoc> comments;
 
-	public CommentVisitor(CompilationUnit cu, String source) {
+	public CommentVisitor(CompilationUnit cu, String source, List<CommentLoc> comments) {
 		super();
 		this.cu = cu;
 		this.source = source;
+		this.comments = comments;
 	}
 
 	public boolean visit(LineComment node) {
@@ -335,7 +421,7 @@ class CommentVisitor extends ASTVisitor {
 		int end = start + node.getLength();
 		node.getAlternateRoot();
 		String comment = source.substring(start, end);
-		System.out.println(comment);
+		comments.add(new CommentLoc(start, end, comment));
 		return true;
 	}
 
@@ -343,7 +429,7 @@ class CommentVisitor extends ASTVisitor {
 		int start = node.getStartPosition();
 		int end = start + node.getLength();
 		String comment = source.substring(start, end);
-		System.out.println(comment);
+		comments.add(new CommentLoc(start, end, comment));
 		return true;
 	}
 	
@@ -351,8 +437,20 @@ class CommentVisitor extends ASTVisitor {
 		int start = node.getStartPosition();
 		int end = start + node.getLength();
 		String comment = source.substring(start, end);
-		System.out.println(comment);
+		comments.add(new CommentLoc(start, end, comment));
 		return true;
 	}
+}
 
+class CommentLoc {
+	
+	public int start;
+	public int end;
+	public String content;
+
+	public CommentLoc(int start, int end, String content) {
+		this.start = start;
+		this.end = end;
+		this.content = content;
+	}
 }

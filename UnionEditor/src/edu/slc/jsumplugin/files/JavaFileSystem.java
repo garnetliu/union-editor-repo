@@ -265,7 +265,8 @@ public class JavaFileSystem {
 	private List<ICompilationUnit> findAllICompilationUnits() throws CoreException {
 		List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
 		try {
-			IPackageFragmentRoot[] packageFragmentRoots = javaProject.getAllPackageFragmentRoots();
+			IPackageFragmentRoot[] packageFragmentRoots = javaProject
+					.getAllPackageFragmentRoots();
 			for (int i = 0; i < packageFragmentRoots.length; i++) {
 				IPackageFragmentRoot packageFragmentRoot = packageFragmentRoots[i];
 				IJavaElement[] fragments = packageFragmentRoot.getChildren();
