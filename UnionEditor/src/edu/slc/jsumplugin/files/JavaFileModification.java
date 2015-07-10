@@ -41,7 +41,7 @@ public class JavaFileModification {
 		// delete
 		for (Variant v : compareUnions.getTraversalInstaces(t, 1)) {
 			CompilationUnit astRoot = parse(iUnit);
-			List<CommentLoc> comments = getComments(iUnit);
+			//List<CommentLoc> comments = getComments(iUnit);
 			// get text edits
 			Pair<ast.Type, String> traversal_union_type = compareUnions.getUnionTypeInTraversal(t);
 //			TextEdit edits = removeInstance(astRoot, t, v, traversal_union_type, comments);
@@ -51,6 +51,18 @@ public class JavaFileModification {
 //			// adding statement to the buffer iUnit will be created in the addInstance in the JavaSystem
 //			iUnit.getBuffer().setContents(document.get());
 			removeInstance(iUnit, astRoot, t, v, traversal_union_type);
+		}
+		// modify
+		for (Variant v : compareUnions.getTraversalInstaces(t, 2)) {
+			CompilationUnit astRoot = parse(iUnit);
+			// get text edits
+			TextEdit edits = insertModifiedMessage(astRoot, t, v, compareUnions.getTraversalModifyMessage(t, v));
+			// apply the text edits to the compilation unit
+			Document document = new Document(iUnit.getSource());
+			edits.apply(document);
+			// adding statement to the buffer iUnit will be created in the addInstance in the JavaSystem
+			iUnit.getBuffer().setContents(document.get());
+			
 		}
 
 	}
@@ -245,6 +257,25 @@ public class JavaFileModification {
 //		}
 //		return null;
 //	}
+	
+	private static TextEdit insertModifiedMessage(CompilationUnit astRoot, Traversal t, Variant v, String modifiedMessage) throws JavaModelException, IllegalArgumentException {
+		// create a ASTRewrite
+		AST ast = astRoot.getAST();
+		ASTRewrite rewriter = ASTRewrite.create(ast);
+		// for getting insertion position (first method)
+		TypeDeclaration typeDecl = (TypeDeclaration) astRoot.types().get(0);
+		MethodDeclaration methodDecl = typeDecl.getMethods()[0];
+		Block block = methodDecl.getBody();// add to this block
+		
+		// add stub comment
+		ListRewrite stubComment = rewriter.getListRewrite(block, Block.STATEMENTS_PROPERTY);
+		Statement placeHolder = (Statement) rewriter.createStringPlaceholder(modifiedMessage, ASTNode.BLOCK);
+		stubComment.insertFirst(placeHolder, null);
+		
+		
+		TextEdit edits = rewriter.rewriteAST();
+		return edits;
+	}
 	
 	private static void removeInstance(ICompilationUnit iUnit, CompilationUnit astRoot, Traversal t, Variant v,
 			Pair<ast.Type, String> traversal_union_type) throws JavaModelException, IllegalArgumentException {
