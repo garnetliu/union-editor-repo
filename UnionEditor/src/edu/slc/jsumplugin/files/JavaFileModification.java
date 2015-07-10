@@ -56,7 +56,8 @@ public class JavaFileModification {
 		for (Variant v : compareUnions.getTraversalInstaces(t, 2)) {
 			CompilationUnit astRoot = parse(iUnit);
 			// get text edits
-			TextEdit edits = insertModifiedMessage(astRoot, t, v, compareUnions.getTraversalModifyMessage(t, v));
+			Pair<ast.Type, String> traversal_union_type = compareUnions.getUnionTypeInTraversal(t);
+			TextEdit edits = insertModifiedMessageInstances(astRoot, t, v, compareUnions.getVariantModifyMessage(t, v), traversal_union_type);
 			// apply the text edits to the compilation unit
 			Document document = new Document(iUnit.getSource());
 			edits.apply(document);
@@ -92,8 +93,21 @@ public class JavaFileModification {
 			// adding statement to the buffer iUnit will be created in the addInstance in the JavaSystem
 			iUnit.getBuffer().setContents(document.get());
 		}
+		
+		// modify
+		for (Variant v: compareUnions.compareVariants_Unions.get(union_name).getModified()) {
+			CompilationUnit astRoot = parse(iUnit);
+			// get text edits
+			TextEdit edits = insertModifiedMessageInInterpreter(astRoot, v, compareUnions.getVariantModifyMessage(union_name, v));
+			// apply the text edits to the compilation unit
+			Document document = new Document(iUnit.getSource());
+			edits.apply(document);
+			// adding statement to the buffer iUnit will be created in the addInstance in the JavaSystem
+			iUnit.getBuffer().setContents(document.get());
+		}
+		
+		
 	}
-
 
 	public static void modifyVisitorInterface(String union_name, ICompilationUnit iUnit, CompareUnions compareUnions) throws JavaModelException, MalformedTreeException, BadLocationException {		
 		// insert
@@ -119,6 +133,18 @@ public class JavaFileModification {
 			// adding statement to the buffer iUnit will be created in the addInstance in the JavaSystem
 			iUnit.getBuffer().setContents(document.get());
 		}
+		
+//		// modify
+//		for (Variant v: compareUnions.compareVariants_Unions.get(union_name).getModified()) {
+//			CompilationUnit astRoot = parse(iUnit);
+//			// get text edits
+//			TextEdit edits = insertModifiedMessageInInterface(astRoot, v, compareUnions.getVariantModifyMessage(union_name, v));
+//			// apply the text edits to the compilation unit
+//			Document document = new Document(iUnit.getSource());
+//			edits.apply(document);
+//			// adding statement to the buffer iUnit will be created in the addInstance in the JavaSystem
+//			iUnit.getBuffer().setContents(document.get());
+//		}
 	}
 	
 	
@@ -127,6 +153,65 @@ public class JavaFileModification {
 	/*
 	 * helper method------------------------------------------------------------------------------------- 
 	 */
+
+	private static TextEdit insertModifiedMessageInInterpreter(CompilationUnit astRoot, Variant v, String variantModifyMessage) throws JavaModelException, IllegalArgumentException {
+		// create a ASTRewrite
+		AST ast = astRoot.getAST();
+		ASTRewrite rewriter = ASTRewrite.create(ast);
+		
+		MethodDeclaration targetMethod = null;
+		// for getting insertion position (first class in the file)
+		TypeDeclaration typeDecl = (TypeDeclaration) astRoot.types().get(0);
+		for (MethodDeclaration methodDecl : typeDecl.getMethods()) {
+			SingleVariableDeclaration parameter = (SingleVariableDeclaration) methodDecl.parameters().get(0);
+			String variant_name = parameter.getName().toString();
+			String variant_type = parameter.getType().toString();
+			// determine if it's the variant that we want to remove
+			if (variant_name.equals(v.getName().toLowerCase()) && variant_type.equals(v.getName())) {
+				targetMethod = methodDecl;
+				break;
+			}
+			
+		}
+		
+		// add variant modify comment to the then block
+		ListRewrite stubComment = rewriter.getListRewrite(targetMethod.getBody(), Block.STATEMENTS_PROPERTY);
+		Statement placeHolder = (Statement) rewriter.createStringPlaceholder(variantModifyMessage, ASTNode.BLOCK);
+		stubComment.insertFirst(placeHolder, null);
+		
+		TextEdit edits = rewriter.rewriteAST();
+		return edits;
+	}
+	
+	private static TextEdit insertModifiedMessageInInterface(CompilationUnit astRoot, Variant v, String variantModifyMessage) throws JavaModelException, IllegalArgumentException {
+		// create a ASTRewrite
+		AST ast = astRoot.getAST();
+		ASTRewrite rewriter = ASTRewrite.create(ast);
+		
+		MethodDeclaration targetMethod = null;
+		// for getting insertion position (first class in the file)
+		TypeDeclaration typeDecl = (TypeDeclaration) astRoot.types().get(0);
+		for (MethodDeclaration methodDecl : typeDecl.getMethods()) {
+			SingleVariableDeclaration parameter = (SingleVariableDeclaration) methodDecl.parameters().get(0);
+			String variant_name = parameter.getName().toString();
+			String variant_type = parameter.getType().toString();
+			// determine if it's the variant that we want to remove
+			if (variant_name.equals(v.getName().toLowerCase()) && variant_type.equals(v.getName())) {
+				targetMethod = methodDecl;
+				break;
+			}
+			
+		}
+		
+		// add variant modify comment to the then block
+		ListRewrite stubComment = rewriter.getListRewrite(typeDecl, TypeDeclaration.BODY_DECLARATIONS_PROPERTY);
+		MethodDeclaration placeHolder = (MethodDeclaration) rewriter.createStringPlaceholder(variantModifyMessage, ASTNode.METHOD_DECLARATION);
+		stubComment.insertBefore(placeHolder, targetMethod, null);
+		
+		
+		TextEdit edits = rewriter.rewriteAST();
+		return edits;
+	}
 	
 	private static TextEdit removeVisitMethod(CompilationUnit astRoot, Variant v) 
 			throws JavaModelException, IllegalArgumentException {
@@ -258,7 +343,8 @@ public class JavaFileModification {
 //		return null;
 //	}
 	
-	private static TextEdit insertModifiedMessage(CompilationUnit astRoot, Traversal t, Variant v, String modifiedMessage) throws JavaModelException, IllegalArgumentException {
+	private static TextEdit insertModifiedMessageInstances(CompilationUnit astRoot, Traversal t, Variant v, 
+			String modifiedMessage, Pair<ast.Type, String> traversal_union_type) throws JavaModelException, IllegalArgumentException {
 		// create a ASTRewrite
 		AST ast = astRoot.getAST();
 		ASTRewrite rewriter = ASTRewrite.create(ast);
@@ -267,10 +353,32 @@ public class JavaFileModification {
 		MethodDeclaration methodDecl = typeDecl.getMethods()[0];
 		Block block = methodDecl.getBody();// add to this block
 		
-		// add stub comment
-		ListRewrite stubComment = rewriter.getListRewrite(block, Block.STATEMENTS_PROPERTY);
-		Statement placeHolder = (Statement) rewriter.createStringPlaceholder(modifiedMessage, ASTNode.BLOCK);
-		stubComment.insertFirst(placeHolder, null);
+		// loop through all statements in this block
+		for (Object o : block.statements()) {
+			Statement s = (Statement) o;
+
+			while (s instanceof IfStatement) {
+				IfStatement is = (IfStatement) s;
+				if (is.getExpression() instanceof InstanceofExpression) {
+					InstanceofExpression instanceOfExp = (InstanceofExpression) is.getExpression();		
+					if (instanceOfExp.getLeftOperand() instanceof Name) {
+						Name leftExp = (Name) instanceOfExp.getLeftOperand();
+						if (leftExp.resolveBinding() instanceof IVariableBinding) {
+							// check if cases match traversal and the variant
+							String left_name = leftExp.getFullyQualifiedName();
+							String right_TypeName = instanceOfExp.getRightOperand().toString();
+							if (left_name.equals(traversal_union_type.b) && right_TypeName.equals(v.getName())) {
+								// add variant modify comment to the then block
+								ListRewrite stubComment = rewriter.getListRewrite(is.getThenStatement(), Block.STATEMENTS_PROPERTY);
+								Statement placeHolder = (Statement) rewriter.createStringPlaceholder(modifiedMessage, ASTNode.BLOCK);
+								stubComment.insertFirst(placeHolder, null);
+							}
+						}
+					}
+				}
+				s = is.getElseStatement();
+			}
+		}
 		
 		
 		TextEdit edits = rewriter.rewriteAST();
