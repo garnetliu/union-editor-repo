@@ -135,15 +135,14 @@ public class JavaFileSystem {
 	private void createVisitors(Unions unions, Unions unions_beforeEdit) throws JavaModelException {
 		for (Traversal t : unions.getTraversals()) {
 				String union_name = t.getUnionArg(unions).toString();
-				createVisitorInterface(unions, unions_beforeEdit, union_name, t.getReturn_type());
-				createVisitorInterpreter(unions, unions_beforeEdit, union_name, t.getReturn_type());
+				createVisitorInterface(unions, unions_beforeEdit, union_name, t);
+				createVisitorInterpreter(unions, unions_beforeEdit, union_name, t);
 				createVisitorTraversalMethod(unions, unions_beforeEdit, union_name, t);
-				
 			}
 		}
 		
 	private void createVisitorTraversalMethod(Unions unions, Unions unions_beforeEdit, String union_name, Traversal t) throws JavaModelException {
-		FormatVisitorTraversalMethod fvtm = new FormatVisitorTraversalMethod(unions, t, union_name+"Interpreter");
+		FormatVisitorTraversalMethod fvtm = new FormatVisitorTraversalMethod(unions, t);
 		String className = fvtm.getClassName();
 		// create java file
 		ICompilationUnit iUnit = fragment.getCompilationUnit(className+".java");
@@ -160,8 +159,9 @@ public class JavaFileSystem {
 		
 	}
 
-	private void createVisitorInterpreter(Unions unions, Unions unions_beforeEdit, String union_name, Type return_type) throws JavaModelException {
-		String className = union_name + "Interpreter";
+	private void createVisitorInterpreter(Unions unions, Unions unions_beforeEdit, String union_name, Traversal t) throws JavaModelException {
+		FormatVisitorInterpreter fvi = new FormatVisitorInterpreter(unions, union_name, t.getReturn_type());
+		String className = fvi.getClassName();
 		// create java file
 		ICompilationUnit iUnit = fragment.getCompilationUnit(className+".java");
 		if (iUnit.exists()) {
@@ -169,14 +169,12 @@ public class JavaFileSystem {
 			// replace the content of original buffer after comparing
 			try {
 				CompareUnions compareUnions = new CompareUnions(unions, unions_beforeEdit);
-				JavaFileModification.modifyVisitorInterpreter(union_name, iUnit, compareUnions);
+				JavaFileModification.modifyVisitorInterpreter(union_name, iUnit, compareUnions, t);
 			} catch (MalformedTreeException | BadLocationException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			fragment.createCompilationUnit(className + ".java", iUnit.getBuffer().getContents(), true, null);
 		} else {
-			FormatVisitorInterpreter fvi = new FormatVisitorInterpreter(unions, union_name, return_type);
 			Formatter packageHeading = new Formatter();
 			packageHeading.format("package %s;\n", fragment.getElementName());
 			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_UNITHEADER + unions.getName());
@@ -189,8 +187,9 @@ public class JavaFileSystem {
 
 
 
-	private void createVisitorInterface(Unions unions, Unions unions_beforeEdit, String union_name, Type return_type) throws JavaModelException {
-		String className = union_name + "Visitor";
+	private void createVisitorInterface(Unions unions, Unions unions_beforeEdit, String union_name, Traversal t) throws JavaModelException {
+		FormatVisitorInterface fvi = new FormatVisitorInterface(unions, union_name, t.getReturn_type());
+		String className = fvi.getClassName();
 		// create java file
 		ICompilationUnit iUnit = fragment.getCompilationUnit(className+".java");
 		if (iUnit.exists()) {
@@ -198,14 +197,13 @@ public class JavaFileSystem {
 			// replace the content of original buffer after comparing
 			try {
 				CompareUnions compareUnions = new CompareUnions(unions, unions_beforeEdit);
-				JavaFileModification.modifyVisitorInterface(union_name, iUnit, compareUnions);
+				JavaFileModification.modifyVisitorInterface(union_name, iUnit, compareUnions, t);
 			} catch (MalformedTreeException | BadLocationException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			fragment.createCompilationUnit(className + ".java", iUnit.getBuffer().getContents(), true, null);
 		} else {
-			FormatVisitorInterface fvi = new FormatVisitorInterface(unions, union_name, return_type);
 			Formatter packageHeading = new Formatter();
 			packageHeading.format("package %s;\n", fragment.getElementName());
 			packageHeading.format("import %s.%s.*;\n", fragment.getElementName(), UNION_UNITHEADER + unions.getName());
@@ -231,13 +229,13 @@ public class JavaFileSystem {
 		ICompilationUnit iUnit = fragment.getCompilationUnit(className+".java");
 		if (iUnit.exists()) {
 			// replace the content of original buffer
-			//iUnit.getBuffer().replace(0, iUnit.getBuffer().getLength(), classContent);
 			fragment.createCompilationUnit(className + ".java", classContent, true, null);
 		} else {
 			fragment.createCompilationUnit(className + ".java", classContent, false, null);
 		}
 		// report/clear extra java file
 		clearExtra(javaFilenames);
+
 	}
 
 

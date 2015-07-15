@@ -68,13 +68,13 @@ public class JavaFileModification {
 
 	}
 
-	public static void modifyVisitorInterpreter(String union_name, ICompilationUnit iUnit, CompareUnions compareUnions) 
+	public static void modifyVisitorInterpreter(String union_name, ICompilationUnit iUnit, CompareUnions compareUnions, Traversal t) 
 			throws JavaModelException, MalformedTreeException, BadLocationException {
 		// insert
 		for (Variant v : compareUnions.compareVariants_Unions.get(union_name).getInsertions()) {
 			CompilationUnit astRoot = parse(iUnit);
 			// get text edits
-			TextEdit edits = insertVisitInInterpreter(astRoot, v);
+			TextEdit edits = insertVisitInInterpreter(astRoot, v, t);
 			// apply the text edits to the compilation unit
 			Document document = new Document(iUnit.getSource());
 			edits.apply(document);
@@ -109,12 +109,12 @@ public class JavaFileModification {
 		
 	}
 
-	public static void modifyVisitorInterface(String union_name, ICompilationUnit iUnit, CompareUnions compareUnions) throws JavaModelException, MalformedTreeException, BadLocationException {		
+	public static void modifyVisitorInterface(String union_name, ICompilationUnit iUnit, CompareUnions compareUnions, Traversal t) throws JavaModelException, MalformedTreeException, BadLocationException {		
 		// insert
 		for (Variant v : compareUnions.compareVariants_Unions.get(union_name).getInsertions()) {
 			CompilationUnit astRoot = parse(iUnit);
 			// get text edits
-			TextEdit edits = insertVisitInInterface(astRoot, v);
+			TextEdit edits = insertVisitInInterface(astRoot, v, t);
 			// apply the text edits to the compilation unit
 			Document document = new Document(iUnit.getSource());
 			edits.apply(document);
@@ -240,7 +240,7 @@ public class JavaFileModification {
 		return edits;
 	}
 	
-	private static TextEdit insertVisitInInterpreter(CompilationUnit astRoot, Variant v) throws JavaModelException, IllegalArgumentException {
+	private static TextEdit insertVisitInInterpreter(CompilationUnit astRoot, Variant v, Traversal t) throws JavaModelException, IllegalArgumentException {
 		// create a ASTRewrite
 		AST ast = astRoot.getAST();
 		ASTRewrite rewriter = ASTRewrite.create(ast);
@@ -251,7 +251,6 @@ public class JavaFileModification {
 		SingleVariableDeclaration parameter = ast.newSingleVariableDeclaration();
 		parameter.setName(ast.newSimpleName(v.getName().toLowerCase()));
 		parameter.setType(ast.newSimpleType(ast.newName(v.getName())));
-		
 		
 		// create method
 		MethodDeclaration newMethodDecl = ast.newMethodDeclaration();
@@ -260,6 +259,25 @@ public class JavaFileModification {
 		newMethodDecl.setBody(ast.newBlock());
 		newMethodDecl.modifiers().add(ast.newModifier(ModifierKeyword.PUBLIC_KEYWORD));
 		
+		// add return statement and method type
+		if (t.getReturn_type().toString().equals("void")) {} 
+		else if (t.getReturn_type() instanceof NumericType) {
+			newMethodDecl.setReturnType2(ast.newPrimitiveType(PrimitiveType.INT)); //caution! only supports int for now
+			ReturnStatement returnStmt = ast.newReturnStatement();
+			returnStmt.setExpression(ast.newNumberLiteral("0"));
+			newMethodDecl.getBody().statements().add(returnStmt);
+		} else if (t.getReturn_type() instanceof BooleanType) {
+			newMethodDecl.setReturnType2(ast.newPrimitiveType(PrimitiveType.BOOLEAN));
+			ReturnStatement returnStmt = ast.newReturnStatement();
+			returnStmt.setExpression(ast.newBooleanLiteral(false));
+			newMethodDecl.getBody().statements().add(returnStmt);
+		} else {
+			newMethodDecl.setReturnType2(ast.newSimpleType(ast.newName(t.getReturn_type().toString())));
+			ReturnStatement returnStmt = ast.newReturnStatement();
+			returnStmt.setExpression(ast.newNullLiteral());
+			newMethodDecl.getBody().statements().add(returnStmt);
+		}
+		
 		// create ListRewrite
 		ListRewrite listRewrite = rewriter.getListRewrite(typeDecl, TypeDeclaration.BODY_DECLARATIONS_PROPERTY);
 		listRewrite.insertFirst(newMethodDecl, null);
@@ -267,7 +285,7 @@ public class JavaFileModification {
 		return edits;
 	}
 	
-	private static TextEdit insertVisitInInterface(CompilationUnit astRoot, Variant v) throws JavaModelException, IllegalArgumentException {
+	private static TextEdit insertVisitInInterface(CompilationUnit astRoot, Variant v, Traversal t) throws JavaModelException, IllegalArgumentException {
 		// create a ASTRewrite
 		AST ast = astRoot.getAST();
 		ASTRewrite rewriter = ASTRewrite.create(ast);
@@ -278,10 +296,21 @@ public class JavaFileModification {
 		SingleVariableDeclaration parameter = ast.newSingleVariableDeclaration();
 		parameter.setName(ast.newSimpleName(v.getName().toLowerCase()));
 		parameter.setType(ast.newSimpleType(ast.newName(v.getName())));
+		
 		// create method
 		MethodDeclaration newMethodDecl = ast.newMethodDeclaration();
 		newMethodDecl.parameters().add(parameter);
 		newMethodDecl.setName(ast.newSimpleName("visit"));
+		
+		// add return statement and method type
+		if (t.getReturn_type().toString().equals("void")) {} 
+		else if (t.getReturn_type() instanceof NumericType) {
+			newMethodDecl.setReturnType2(ast.newPrimitiveType(PrimitiveType.INT)); //caution! only supports int for now
+		} else if (t.getReturn_type() instanceof BooleanType) {
+			newMethodDecl.setReturnType2(ast.newPrimitiveType(PrimitiveType.BOOLEAN));
+		} else {
+			newMethodDecl.setReturnType2(ast.newSimpleType(ast.newName(t.getReturn_type().toString())));
+		}
 		
 		// create ListRewrite
 		ListRewrite listRewrite = rewriter.getListRewrite(typeDecl, TypeDeclaration.BODY_DECLARATIONS_PROPERTY);
@@ -470,6 +499,7 @@ public class JavaFileModification {
 		assign.setRightHandSide(right);
 		then.statements().add(ast.newExpressionStatement(assign));
 		
+		// add return statement
 		if (t.getReturn_type().toString().equals("void")) {} 
 		else if (t.getReturn_type() instanceof NumericType) {
 			ReturnStatement returnStmt = ast.newReturnStatement();
@@ -487,6 +517,7 @@ public class JavaFileModification {
 			then.statements().add(returnStmt);
 			newIfStatement.setThenStatement(then);
 		}
+		
 		// add stub comment
 		ListRewrite stubComment = rewriter.getListRewrite(then, Block.STATEMENTS_PROPERTY);
 		Statement placeHolder = (Statement) rewriter.createStringPlaceholder("// TODO Auto-generated case match pattern", ASTNode.BLOCK);
