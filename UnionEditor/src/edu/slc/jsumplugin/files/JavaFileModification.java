@@ -436,7 +436,6 @@ public class JavaFileModification {
 	
 	private static void removeInstance(ICompilationUnit iUnit, CompilationUnit astRoot, Traversal t, Variant v,
 			Pair<ast.Type, String> traversal_union_type) throws JavaModelException, IllegalArgumentException {
-
 		// create a ASTRewrite
 		AST ast = astRoot.getAST();
 		ASTRewrite rewriter = ASTRewrite.create(ast);
@@ -455,24 +454,21 @@ public class JavaFileModification {
 					InstanceofExpression instanceOfExp = (InstanceofExpression) is.getExpression();		
 					if (instanceOfExp.getLeftOperand() instanceof Name) {
 						Name leftExp = (Name) instanceOfExp.getLeftOperand();
-						if (leftExp.resolveBinding() instanceof IVariableBinding) {
-							// check if cases match traversal and the variant
-							String left_name = leftExp.getFullyQualifiedName();
-							String right_TypeName = instanceOfExp.getRightOperand().toString();
-							if (left_name.equals(traversal_union_type.b) && right_TypeName.equals(v.getName())) {
-								// replace the current if statement with its else statements (through the ICompilation unit)
-								Statement isElse = is.getElseStatement();
-								int isStart = is.getStartPosition();
-								int elseStart = isElse.getStartPosition();
-								int elseEnd = isElse.getStartPosition() + isElse.getLength();
-								String contents = iUnit.getBuffer().getContents();
-								String elseContents = contents.substring(elseStart, elseEnd);
-								String newContents = contents.substring(0, isStart) + elseContents + contents.substring(elseEnd, contents.length());
-								//System.out.println(newContents);
-								iUnit.getBuffer().setContents(newContents);
-							
-								
-							}
+						// check if cases match traversal and the variant
+						String left_name = leftExp.getFullyQualifiedName();
+						String right_TypeName = instanceOfExp.getRightOperand().toString();
+						if (left_name.equals(traversal_union_type.b) && right_TypeName.equals(v.getName())) {
+							// replace the current if statement with its else statements (through the ICompilation unit)
+							Statement isElse = is.getElseStatement();
+							int isStart = is.getStartPosition();
+							int elseStart = isElse.getStartPosition();
+							int elseEnd = isElse.getStartPosition() + isElse.getLength();
+							String contents = iUnit.getBuffer().getContents();
+							String elseContents = contents.substring(elseStart, elseEnd);
+							String newContents = contents.substring(0, isStart) + elseContents + contents.substring(elseEnd, contents.length());
+							//System.out.println(newContents);
+							iUnit.getBuffer().setContents(newContents);
+
 						}
 					}
 				}
@@ -541,7 +537,6 @@ public class JavaFileModification {
 		Statement placeHolder = (Statement) rewriter.createStringPlaceholder("// TODO Auto-generated case match pattern", ASTNode.BLOCK);
 		stubComment.insertFirst(placeHolder, null);
 	
-		System.out.println(then);
 		// loop through the if else instances and insert at last
 		for (Object o : block.statements()) {
 			Statement s = (Statement) o;

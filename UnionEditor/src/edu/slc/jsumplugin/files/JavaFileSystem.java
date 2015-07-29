@@ -122,7 +122,7 @@ public class JavaFileSystem {
 			// create java file
 			ICompilationUnit iUnit = mainFragment.getCompilationUnit(className + ".java");
 			if (iUnit.exists()) {
-				System.out.printf("file %s already exists...comparing edits\n", className + ".java");
+				//System.out.printf("file %s already exists...comparing edits\n", className + ".java");
 				// replace the content of original buffer after comparing
 				try {
 					CompareUnions compareUnions = new CompareUnions(unions, unions_beforeEdit);
@@ -157,7 +157,7 @@ public class JavaFileSystem {
 		// create java file
 		ICompilationUnit iUnit = mainFragment.getCompilationUnit(className+".java");
 		if (iUnit.exists()) {
-			System.out.printf("file %s already exists...leaving the file as is\n", className + ".java");
+			//System.out.printf("file %s already exists...leaving the file as is\n", className + ".java");
 //			System.out.printf("file %s already exists...comparing edits\n", className + ".java");
 //			// replace the content of original buffer after comparing
 //			try {
@@ -185,7 +185,7 @@ public class JavaFileSystem {
 		// create java file
 		ICompilationUnit iUnit = mainFragment.getCompilationUnit(className+".java");
 		if (iUnit.exists()) {
-			System.out.printf("file %s already exists...comparing edits\n", className + ".java");
+			//System.out.printf("file %s already exists...comparing edits\n", className + ".java");
 			// replace the content of original buffer after comparing
 			try {
 				CompareUnions compareUnions = new CompareUnions(unions, unions_beforeEdit);
@@ -216,7 +216,7 @@ public class JavaFileSystem {
 		// create java file
 		ICompilationUnit iUnit = generatedFragment.getCompilationUnit(className+".java");
 		if (iUnit.exists()) {
-			System.out.printf("file %s already exists...comparing edits\n", className + ".java");
+			//System.out.printf("file %s already exists...comparing edits\n", className + ".java");
 			// replace the content of original buffer after comparing
 			try {
 				CompareUnions compareUnions = new CompareUnions(unions, unions_beforeEdit);
