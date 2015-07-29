@@ -134,18 +134,25 @@ public class JavaFileModification {
 			iUnit.getBuffer().setContents(document.get());
 		}
 		
-//		// modify
-//		for (Variant v: compareUnions.compareVariants_Unions.get(union_name).getModified()) {
+	}
+	
+//	public static void modifyVisitorTraversalMethod(String union_name, ICompilationUnit iUnit, CompareUnions compareUnions, Traversal t) throws JavaModelException, MalformedTreeException, BadLocationException {
+//
+//		ast.Type return_type_change = compareUnions.getReturnTypeChangeInTraversal(t);
+//		if (return_type_change != null) {
+//			// modify the return type of this traversal
 //			CompilationUnit astRoot = parse(iUnit);
 //			// get text edits
-//			TextEdit edits = insertModifiedMessageInInterface(astRoot, v, compareUnions.getVariantModifyMessage(union_name, v));
+//			TextEdit edits = changeReturnType(astRoot, t, return_type_change);
 //			// apply the text edits to the compilation unit
 //			Document document = new Document(iUnit.getSource());
 //			edits.apply(document);
 //			// adding statement to the buffer iUnit will be created in the addInstance in the JavaSystem
 //			iUnit.getBuffer().setContents(document.get());
 //		}
-	}
+//
+//		
+//	}
 	
 	
 		
@@ -153,6 +160,48 @@ public class JavaFileModification {
 	/*
 	 * helper method------------------------------------------------------------------------------------- 
 	 */
+	
+//	private static TextEdit changeReturnType(CompilationUnit astRoot, Traversal t, ast.Type return_type_change) {
+//		// create a ASTRewrite
+//		AST ast = astRoot.getAST();
+//		ASTRewrite rewriter = ASTRewrite.create(ast);
+//		// for getting insertion position (first method)
+//		TypeDeclaration typeDecl = (TypeDeclaration) astRoot.types().get(0);
+//		MethodDeclaration methodDecl = typeDecl.getMethods()[0];
+//		Block block = methodDecl.getBody();// add to this block
+//		
+//		// void to non-void
+//		if (t.getReturn_type().toString().equals("void")) {
+//				methodDecl.setReturnType2(type);
+//				// add return statement and method type
+//				if (t.getReturn_type().toString().equals("void")) {} 
+//				else if (t.getReturn_type() instanceof NumericType) {
+//					newMethodDecl.setReturnType2(ast.newPrimitiveType(PrimitiveType.INT)); //caution! only supports int for now
+//					ReturnStatement returnStmt = ast.newReturnStatement();
+//					returnStmt.setExpression(ast.newNumberLiteral("0"));
+//					newMethodDecl.getBody().statements().add(returnStmt);
+//				} else if (t.getReturn_type() instanceof BooleanType) {
+//					newMethodDecl.setReturnType2(ast.newPrimitiveType(PrimitiveType.BOOLEAN));
+//					ReturnStatement returnStmt = ast.newReturnStatement();
+//					returnStmt.setExpression(ast.newBooleanLiteral(false));
+//					newMethodDecl.getBody().statements().add(returnStmt);
+//				} else {
+//					newMethodDecl.setReturnType2(ast.newSimpleType(ast.newName(t.getReturn_type().toString())));
+//					ReturnStatement returnStmt = ast.newReturnStatement();
+//					returnStmt.setExpression(ast.newNullLiteral());
+//					newMethodDecl.getBody().statements().add(returnStmt);
+//				}
+//		} else {
+//			// non-void to void
+//			if (return_type_change.toString().equals("void")) {
+//				
+//			} else {
+//				// non-void to non-void
+//				
+//			}
+//		}
+//		return null;
+//	}
 
 	private static TextEdit insertModifiedMessageInInterpreter(CompilationUnit astRoot, Variant v, String variantModifyMessage) throws JavaModelException, IllegalArgumentException {
 		// create a ASTRewrite
@@ -183,35 +232,6 @@ public class JavaFileModification {
 		return edits;
 	}
 	
-	private static TextEdit insertModifiedMessageInInterface(CompilationUnit astRoot, Variant v, String variantModifyMessage) throws JavaModelException, IllegalArgumentException {
-		// create a ASTRewrite
-		AST ast = astRoot.getAST();
-		ASTRewrite rewriter = ASTRewrite.create(ast);
-		
-		MethodDeclaration targetMethod = null;
-		// for getting insertion position (first class in the file)
-		TypeDeclaration typeDecl = (TypeDeclaration) astRoot.types().get(0);
-		for (MethodDeclaration methodDecl : typeDecl.getMethods()) {
-			SingleVariableDeclaration parameter = (SingleVariableDeclaration) methodDecl.parameters().get(0);
-			String variant_name = parameter.getName().toString();
-			String variant_type = parameter.getType().toString();
-			// determine if it's the variant that we want to remove
-			if (variant_name.equals(v.getName().toLowerCase()) && variant_type.equals(v.getName())) {
-				targetMethod = methodDecl;
-				break;
-			}
-			
-		}
-		
-		// add variant modify comment to the then block
-		ListRewrite stubComment = rewriter.getListRewrite(typeDecl, TypeDeclaration.BODY_DECLARATIONS_PROPERTY);
-		MethodDeclaration placeHolder = (MethodDeclaration) rewriter.createStringPlaceholder(variantModifyMessage, ASTNode.METHOD_DECLARATION);
-		stubComment.insertBefore(placeHolder, targetMethod, null);
-		
-		
-		TextEdit edits = rewriter.rewriteAST();
-		return edits;
-	}
 	
 	private static TextEdit removeVisitMethod(CompilationUnit astRoot, Variant v) 
 			throws JavaModelException, IllegalArgumentException {
@@ -450,11 +470,7 @@ public class JavaFileModification {
 								String newContents = contents.substring(0, isStart) + elseContents + contents.substring(elseEnd, contents.length());
 								//System.out.println(newContents);
 								iUnit.getBuffer().setContents(newContents);
-								
-//								astRoot = parse(iUnit);
-//								typeDecl = (TypeDeclaration) astRoot.types().get(0);
-//								methodDecl = typeDecl.getMethods()[0];
-//								block = methodDecl.getBody();// add to this block
+							
 								
 							}
 						}
@@ -500,7 +516,9 @@ public class JavaFileModification {
 		then.statements().add(ast.newExpressionStatement(assign));
 		
 		// add return statement
-		if (t.getReturn_type().toString().equals("void")) {} 
+		if (t.getReturn_type().toString().equals("void")) {
+			newIfStatement.setThenStatement(then);
+		} 
 		else if (t.getReturn_type() instanceof NumericType) {
 			ReturnStatement returnStmt = ast.newReturnStatement();
 			returnStmt.setExpression(ast.newNumberLiteral("0"));
@@ -523,6 +541,7 @@ public class JavaFileModification {
 		Statement placeHolder = (Statement) rewriter.createStringPlaceholder("// TODO Auto-generated case match pattern", ASTNode.BLOCK);
 		stubComment.insertFirst(placeHolder, null);
 	
+		System.out.println(then);
 		// loop through the if else instances and insert at last
 		for (Object o : block.statements()) {
 			Statement s = (Statement) o;
